@@ -4,14 +4,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.files.FileHandle;
-import io.anuke.kryonet.DefaultThreadImpl;
-import io.anuke.kryonet.KryoClient;
-import io.anuke.kryonet.KryoServer;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.core.ThreadHandler;
-import io.anuke.mindustry.io.SaveIO;
 import io.anuke.mindustry.game.Saves.SaveSlot;
+import io.anuke.mindustry.io.SaveIO;
+import io.anuke.mindustry.net.DefaultThreadImpl;
 import io.anuke.mindustry.net.Net;
+import io.anuke.mindustry.net.RudpClient;
+import io.anuke.mindustry.net.RudpServer;
 import io.anuke.ucore.scene.ui.TextField;
 import io.anuke.ucore.scene.ui.layout.Unit;
 import io.anuke.ucore.util.Bundles;
@@ -36,8 +36,8 @@ public class IOSLauncher extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        Net.setClientProvider(new KryoClient());
-        Net.setServerProvider(new KryoServer());
+        Net.setClientProvider(new RudpClient());
+        Net.setServerProvider(new RudpServer());
 
         Unit.dp.addition -= 0.2f;
 

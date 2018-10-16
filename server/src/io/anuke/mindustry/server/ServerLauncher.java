@@ -4,9 +4,9 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.headless.HeadlessApplication;
 import com.badlogic.gdx.backends.headless.HeadlessApplicationConfiguration;
-import io.anuke.kryonet.KryoClient;
-import io.anuke.kryonet.KryoServer;
 import io.anuke.mindustry.net.Net;
+import io.anuke.mindustry.net.RudpClient;
+import io.anuke.mindustry.net.RudpServer;
 import io.anuke.ucore.util.EmptyLogger;
 import io.anuke.ucore.util.OS;
 
@@ -22,8 +22,8 @@ public class ServerLauncher extends HeadlessApplication{
     public static void main(String[] args){
         try{
 
-            Net.setClientProvider(new KryoClient());
-            Net.setServerProvider(new KryoServer());
+            Net.setClientProvider(new RudpClient());
+            Net.setServerProvider(new RudpServer());
 
             HeadlessApplicationConfiguration config = new HeadlessApplicationConfiguration();
             config.preferencesDirectory = OS.getAppDataDirectoryString("Mindustry");

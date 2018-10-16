@@ -13,7 +13,7 @@
 /core/lib/
 /core/assets-raw/sprites/generated/
 /annotations/build/
-/kryonet/build/
+/net/build/
 /tools/build/
 /tests/build/
 /server/build/

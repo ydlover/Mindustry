@@ -3,11 +3,11 @@ package io.anuke.mindustry.desktop;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
-import io.anuke.kryonet.KryoClient;
-import io.anuke.kryonet.KryoServer;
 import io.anuke.mindustry.Mindustry;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.net.Net;
+import io.anuke.mindustry.net.RudpClient;
+import io.anuke.mindustry.net.RudpServer;
 
 public class DesktopLauncher extends Lwjgl3Application{
 
@@ -25,8 +25,8 @@ public class DesktopLauncher extends Lwjgl3Application{
 
             Platform.instance = new DesktopPlatform(arg);
 
-            Net.setClientProvider(new KryoClient());
-            Net.setServerProvider(new KryoServer());
+            Net.setClientProvider(new RudpClient());
+            Net.setServerProvider(new RudpServer());
             new DesktopLauncher(new Mindustry(), config);
         }catch(Throwable e){
             CrashHandler.handle(e);

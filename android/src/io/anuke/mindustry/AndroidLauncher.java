@@ -19,14 +19,14 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.security.ProviderInstaller;
-import io.anuke.kryonet.DefaultThreadImpl;
-import io.anuke.kryonet.KryoClient;
-import io.anuke.kryonet.KryoServer;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.core.ThreadHandler.ThreadProvider;
 import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.io.SaveIO;
+import io.anuke.mindustry.net.DefaultThreadImpl;
 import io.anuke.mindustry.net.Net;
+import io.anuke.mindustry.net.RudpClient;
+import io.anuke.mindustry.net.RudpServer;
 import io.anuke.mindustry.ui.dialogs.FileChooser;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.scene.ui.TextField;
@@ -147,6 +147,7 @@ public class AndroidLauncher extends PatchedAndroidApplication{
                 return true;
             }
         };
+
         try{
             ProviderInstaller.installIfNeeded(this);
         }catch(GooglePlayServicesRepairableException e){
@@ -155,12 +156,16 @@ public class AndroidLauncher extends PatchedAndroidApplication{
         }catch(GooglePlayServicesNotAvailableException e){
             Log.e("SecurityException", "Google Play Services not available.");
         }
+
         if(doubleScaleTablets && isTablet(this.getContext())){
             Unit.dp.addition = 0.5f;
         }
+
         config.hideStatusBar = true;
-        Net.setClientProvider(new KryoClient());
-        Net.setServerProvider(new KryoServer());
+
+        Net.setClientProvider(new RudpClient());
+        Net.setServerProvider(new RudpServer());
+
         initialize(new Mindustry(), config);
         checkFiles(getIntent());
     }

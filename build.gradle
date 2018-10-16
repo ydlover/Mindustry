@@ -91,7 +91,7 @@ project(":desktop") {
 
     dependencies {
         compile project(":core")
-        compile project(":kryonet")
+        compile project(":net")
         if(new File(projectDir.parent, '../debug').exists() && System.properties["release"] == null) compile project(":debug")
 
         compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
@@ -143,7 +143,7 @@ project(":ios") {
 
     dependencies {
         compile project(":core")
-        implementation project(":kryonet")
+        implementation project(":net")
 
         compile "com.mobidevelop.robovm:robovm-rt:$roboVMVersion"
         compile "com.mobidevelop.robovm:robovm-cocoatouch:$roboVMVersion"
@@ -198,7 +198,7 @@ project(":server") {
         compileOnly project(":annotations")
 
         compile project(":core")
-        compile project(":kryonet")
+        compile project(":net")
         compile "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
     }
@@ -237,13 +237,13 @@ project(":annotations") {
     }
 }
 
-project(":kryonet") {
+project(":net") {
     apply plugin: "java"
 
     dependencies {
         compile project(":core")
         compile "org.lz4:lz4-java:1.4.1"
-        compile 'com.github.Anuken:kryonet:53b10247b1'
+        compile 'com.github.Anuken:jRUDP:f0c14d9a65242fdfd6fb1d4d7c3b70bd3df6317e'
         compile 'com.github.Anuken:WaifUPnP:05eb46bc577fd7674596946ba288c96c0cedd893'
     }
 }
