@@ -28,6 +28,10 @@ allprojects {
         gdxVersion = '1.9.8'
         roboVMVersion = '2.3.0'
         uCoreVersion = 'd5f892dcf1773b0f6d47d2190d139cc6342ac75f'
+        
+        useLocalDependencies = {
+            return System.properties["release"] == null || System.properties["release"] == "false";
+        }
 
         getVersionString = {
             String buildVersion = getBuildVersion()
@@ -163,16 +167,13 @@ project(":core") {
         compileOnly project(":annotations")
         build.finalizedBy(finish)
 
-        def comp = System.properties["release"] == null || System.properties["release"] == "false"
-        if(!comp) println("Note: Compiling release build.")
-
-        if(new File(projectDir.parent, '../uCore').exists() && comp){
+        if(new File(projectDir.parent, '../uCore').exists() && useLocalDependencies()){
             compile project(":uCore")
         }else{
             compile "com.github.anuken:ucore:$uCoreVersion"
         }
 
-        if(new File(projectDir.parent, '../GDXGifRecorder').exists() && comp) {
+        if(new File(projectDir.parent, '../GDXGifRecorder').exists() && useLocalDependencies()) {
             compile project(":GDXGifRecorder")
         }
 
@@ -242,8 +243,14 @@ project(":net") {
 
     dependencies {
         compile project(":core")
+
+        if(new File(projectDir.parent, '../HexNet').exists() && useLocalDependencies()) {
+            compile project(":HexNet")
+        }else{
+            compile 'com.github.Anuken:HexNet:18e7fb893217a9df5335d474c2450ea435b84a4b'
+        }
+        
         compile "org.lz4:lz4-java:1.4.1"
-        compile 'com.github.Anuken:jRUDP:f0c14d9a65242fdfd6fb1d4d7c3b70bd3df6317e'
         compile 'com.github.Anuken:WaifUPnP:05eb46bc577fd7674596946ba288c96c0cedd893'
     }
 }

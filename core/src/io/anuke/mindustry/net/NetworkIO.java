@@ -294,7 +294,7 @@ public class NetworkIO{
         }
     }
 
-    public static ByteBuffer writeServerData(){
+    public static void writeServerData(ByteBuffer buffer){
         int maxlen = 32;
 
         String host = (headless ? "Server" : players[0].name);
@@ -302,8 +302,6 @@ public class NetworkIO{
 
         host = host.substring(0, Math.min(host.length(), maxlen));
         map = map.substring(0, Math.min(map.length(), maxlen));
-
-        ByteBuffer buffer = ByteBuffer.allocate(128);
 
         buffer.put((byte) host.getBytes().length);
         buffer.put(host.getBytes());
@@ -316,7 +314,6 @@ public class NetworkIO{
         buffer.putInt(Version.build);
         buffer.put((byte)Version.type.getBytes().length);
         buffer.put(Version.type.getBytes());
-        return buffer;
     }
 
     public static Host readServerData(String hostAddress, ByteBuffer buffer){

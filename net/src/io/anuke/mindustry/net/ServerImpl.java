@@ -1,35 +1,35 @@
 package io.anuke.mindustry.net;
 
 import com.badlogic.gdx.utils.Array;
-import io.anuke.kryonet.NetSerializer;
+import io.anuke.hexnet.HexConnection;
+import io.anuke.hexnet.HexServer;
+import io.anuke.hexnet.HexServerListener;
+import io.anuke.hexnet.Mode;
 import io.anuke.mindustry.net.Net.SendMode;
 import io.anuke.mindustry.net.Net.ServerProvider;
 import io.anuke.mindustry.net.Packets.StreamBegin;
 import io.anuke.mindustry.net.Packets.StreamChunk;
-import io.anuke.rudp.rudp.RUDPClient;
-import io.anuke.rudp.rudp.RUDPServer;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class RudpServer implements ServerProvider{
+public class ServerImpl implements ServerProvider{
     final LZ4Compressor compressor = LZ4Factory.fastestInstance().fastCompressor();
-    final ByteBuffer buffer = ByteBuffer.allocate(4096);
-    final CopyOnWriteArrayList<RudpConnection> connections = new CopyOnWriteArrayList<>();
-    final Array<RudpConnection> array = new Array<>();
-
-    RUDPServer server;
+    final CopyOnWriteArrayList<ConnectionImpl> connections = new CopyOnWriteArrayList<>();
+    final Array<ConnectionImpl> array = new Array<>();
+    final HexServer server = new HexServer();
 
     @Override
     public void host(int port) throws IOException{
-        if(server != null){
-            close();
-        }
-        server = new RUDPServer(port);
-        server.start();
+        server.setSerializer(new SerializerImpl());
+        server.setDiscovery(NetworkIO::writeServerData);
+        server.setListener(new HexServerListener(){
+
+        });
+
+        server.open(port);
         connections.clear();
     }
 
@@ -59,42 +59,32 @@ public class RudpServer implements ServerProvider{
 
     @Override
     public void send(Object object, SendMode mode){
-        byte[] bytes = NetSerializer.writeBytes(buffer, object);
-        for(NetConnection c : connections){
-            sendRaw(c.id, bytes, mode);
+        for(ConnectionImpl c : connections){
+           sendRaw(c, object, mode);
         }
     }
 
     @Override
     public void sendTo(int id, Object object, SendMode mode){
-        byte[] bytes = NetSerializer.writeBytes(buffer, object);
-        sendRaw(id, bytes, mode);
+        sendRaw(getByID(id), object, mode);
     }
 
     @Override
     public void sendExcept(int id, Object object, SendMode mode){
-        byte[] bytes = NetSerializer.writeBytes(buffer, object);
-        for(NetConnection c : connections){
+        for(ConnectionImpl c : connections){
             if(c.id != id){
-                sendRaw(c.id, bytes, mode);
+                sendRaw(c, object, mode);
             }
         }
     }
 
-    void sendRaw(int id, byte[] data, SendMode mode){
-        if(mode == SendMode.tcp){
-            server.getClient(id).sendReliablePacket(data);
-        }else{
-            server.getClient(id).sendPacket(data);
-        }
+    void sendRaw(ConnectionImpl c, Object object, SendMode mode){
+        server.send(c.hex, mode == SendMode.tcp ? Mode.reliable : Mode.unreliable, object);
     }
 
     @Override
     public void close(){
-        if(server == null) return;
-
-        server.stop();
-        server = null;
+        server.close();
     }
 
     @Override
@@ -103,17 +93,17 @@ public class RudpServer implements ServerProvider{
     }
 
     @Override
-    public Array<? extends NetConnection> getConnections(){
+    public Array<ConnectionImpl> getConnections(){
         array.clear();
-        for(RudpConnection c : connections){
+        for(ConnectionImpl c : connections){
             array.add(c);
         }
         return array;
     }
 
     @Override
-    public NetConnection getByID(int id){
-        for(NetConnection n : connections){
+    public ConnectionImpl getByID(int id){
+        for(ConnectionImpl n : connections){
             if(n.id == id){
                 return n;
             }
@@ -126,19 +116,17 @@ public class RudpServer implements ServerProvider{
         close();
     }
 
-    class RudpConnection extends NetConnection{
+    class ConnectionImpl extends NetConnection{
+        final HexConnection hex;
 
-        public RudpConnection(RUDPClient client, String address){
-            super(client.getID(), address);
-        }
-
-        @Override
-        public void send(Object object, SendMode mode){
+        public ConnectionImpl(HexConnection con, String address){
+            super(con.id, address);
+            this.hex = con;
         }
 
         @Override
         public void close(){
-
+            server.disconnect(hex);
         }
     }
 }

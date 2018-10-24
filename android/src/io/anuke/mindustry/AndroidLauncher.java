@@ -25,8 +25,8 @@ import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.io.SaveIO;
 import io.anuke.mindustry.net.DefaultThreadImpl;
 import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.RudpClient;
-import io.anuke.mindustry.net.RudpServer;
+import io.anuke.mindustry.net.ClientImpl;
+import io.anuke.mindustry.net.ServerImpl;
 import io.anuke.mindustry.ui.dialogs.FileChooser;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.scene.ui.TextField;
@@ -163,8 +163,8 @@ public class AndroidLauncher extends PatchedAndroidApplication{
 
         config.hideStatusBar = true;
 
-        Net.setClientProvider(new RudpClient());
-        Net.setServerProvider(new RudpServer());
+        Net.setClientProvider(new ClientImpl());
+        Net.setServerProvider(new ServerImpl());
 
         initialize(new Mindustry(), config);
         checkFiles(getIntent());

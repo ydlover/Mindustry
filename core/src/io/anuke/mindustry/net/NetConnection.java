@@ -1,7 +1,5 @@
 package io.anuke.mindustry.net;
 
-import io.anuke.mindustry.net.Net.SendMode;
-
 public abstract class NetConnection{
     public final int id;
     public final String address;
@@ -25,8 +23,6 @@ public abstract class NetConnection{
     public boolean isConnected(){
         return true;
     }
-
-    public abstract void send(Object object, SendMode mode);
 
     public abstract void close();
 }

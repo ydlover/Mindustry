@@ -10,9 +10,15 @@ if(System.properties["release"] == null || System.properties["release"] == "fals
         include ':GDXGifRecorder'
         project(':GDXGifRecorder').projectDir = new File(settingsDir, '../GDXGifRecorder')
     }
+    
     if (new File(settingsDir, '../debug').exists()) {
         include ':debug'
         project(':debug').projectDir = new File(settingsDir, '../debug')
+    }
+
+    if (new File(settingsDir, '../HexNet').exists()) {
+        include ':HexNet'
+        project(':HexNet').projectDir = new File(settingsDir, '../HexNet')
     }
 }else{
     println("Not including local repositories.")

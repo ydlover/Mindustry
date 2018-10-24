@@ -5,8 +5,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.headless.HeadlessApplication;
 import com.badlogic.gdx.backends.headless.HeadlessApplicationConfiguration;
 import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.RudpClient;
-import io.anuke.mindustry.net.RudpServer;
+import io.anuke.mindustry.net.ClientImpl;
+import io.anuke.mindustry.net.ServerImpl;
 import io.anuke.ucore.util.EmptyLogger;
 import io.anuke.ucore.util.OS;
 
@@ -22,8 +22,8 @@ public class ServerLauncher extends HeadlessApplication{
     public static void main(String[] args){
         try{
 
-            Net.setClientProvider(new RudpClient());
-            Net.setServerProvider(new RudpServer());
+            Net.setClientProvider(new ClientImpl());
+            Net.setServerProvider(new ServerImpl());
 
             HeadlessApplicationConfiguration config = new HeadlessApplicationConfiguration();
             config.preferencesDirectory = OS.getAppDataDirectoryString("Mindustry");

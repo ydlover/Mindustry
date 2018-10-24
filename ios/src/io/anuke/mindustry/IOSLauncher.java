@@ -10,8 +10,8 @@ import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.io.SaveIO;
 import io.anuke.mindustry.net.DefaultThreadImpl;
 import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.RudpClient;
-import io.anuke.mindustry.net.RudpServer;
+import io.anuke.mindustry.net.ClientImpl;
+import io.anuke.mindustry.net.ServerImpl;
 import io.anuke.ucore.scene.ui.TextField;
 import io.anuke.ucore.scene.ui.layout.Unit;
 import io.anuke.ucore.util.Bundles;
@@ -36,8 +36,8 @@ public class IOSLauncher extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        Net.setClientProvider(new RudpClient());
-        Net.setServerProvider(new RudpServer());
+        Net.setClientProvider(new ClientImpl());
+        Net.setServerProvider(new ServerImpl());
 
         Unit.dp.addition -= 0.2f;
 

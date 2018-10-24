@@ -6,8 +6,8 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import io.anuke.mindustry.Mindustry;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.RudpClient;
-import io.anuke.mindustry.net.RudpServer;
+import io.anuke.mindustry.net.ClientImpl;
+import io.anuke.mindustry.net.ServerImpl;
 
 public class DesktopLauncher extends Lwjgl3Application{
 
@@ -25,8 +25,8 @@ public class DesktopLauncher extends Lwjgl3Application{
 
             Platform.instance = new DesktopPlatform(arg);
 
-            Net.setClientProvider(new RudpClient());
-            Net.setServerProvider(new RudpServer());
+            Net.setClientProvider(new ClientImpl());
+            Net.setServerProvider(new ServerImpl());
             new DesktopLauncher(new Mindustry(), config);
         }catch(Throwable e){
             CrashHandler.handle(e);
