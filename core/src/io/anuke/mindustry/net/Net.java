@@ -348,7 +348,7 @@ public class Net{
     }
 
     public enum SendMode{
-        tcp, udp
+        reliable, unreliable
     }
 
     /**Client implementation.*/

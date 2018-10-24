@@ -1,14 +1,15 @@
 package io.anuke.mindustry.net;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Array;
-import io.anuke.hexnet.HexConnection;
-import io.anuke.hexnet.HexServer;
-import io.anuke.hexnet.HexServerListener;
-import io.anuke.hexnet.Mode;
+import io.anuke.hexnet.*;
 import io.anuke.mindustry.net.Net.SendMode;
 import io.anuke.mindustry.net.Net.ServerProvider;
+import io.anuke.mindustry.net.Packets.Connect;
+import io.anuke.mindustry.net.Packets.Disconnect;
 import io.anuke.mindustry.net.Packets.StreamBegin;
 import io.anuke.mindustry.net.Packets.StreamChunk;
+import io.anuke.ucore.util.Log;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 
@@ -26,7 +27,52 @@ public class ServerImpl implements ServerProvider{
         server.setSerializer(new SerializerImpl());
         server.setDiscovery(NetworkIO::writeServerData);
         server.setListener(new HexServerListener(){
+            @Override
+            public void connected (HexConnection connection) {
+                String ip = connection.address.getAddress().getHostAddress();
 
+                ConnectionImpl kn = new ConnectionImpl(connection);
+
+                Connect c = new Connect();
+                c.id = kn.id;
+                c.addressTCP = ip;
+
+                Log.info("&bRecieved connection: {0} / {1}", c.id, c.addressTCP);
+
+                connections.add(kn);
+                Gdx.app.postRunnable(() -> Net.handleServerReceived(kn.id, c));
+            }
+
+            @Override
+            public void disconnected (HexConnection connection, Reason reason) {
+                ConnectionImpl k = getByID(connection.id);
+                Log.info("&bLost connection {0}. Reason: {1}", connection.id, reason);
+                if(k == null) return;
+
+                Disconnect c = new Disconnect();
+                c.id = k.id;
+
+                Log.info("&bLost connection: {0}", k.id);
+
+                Gdx.app.postRunnable(() -> {
+                    Net.handleServerReceived(k.id, c);
+                    connections.remove(k);
+                });
+            }
+
+            @Override
+            public void received (HexConnection connection, Object object){
+                ConnectionImpl k = getByID(connection.id);
+                if(k == null) return;
+
+                Gdx.app.postRunnable(() -> {
+                    try{
+                        Net.handleServerReceived(k.id, object);
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+                });
+            }
         });
 
         server.open(port);
@@ -40,7 +86,7 @@ public class ServerImpl implements ServerProvider{
             StreamBegin begin = new StreamBegin();
             begin.total = stream.stream.available();
             begin.type = Registrator.getID(stream.getClass());
-            sendTo(id, begin, SendMode.tcp);
+            sendTo(id, begin, SendMode.reliable);
             cid = begin.id;
 
             while(stream.stream.available() > 0){
@@ -50,7 +96,7 @@ public class ServerImpl implements ServerProvider{
                 StreamChunk chunk = new StreamChunk();
                 chunk.id = cid;
                 chunk.data = bytes;
-                sendTo(id, chunk, SendMode.tcp);
+                sendTo(id, chunk, SendMode.reliable);
             }
         }catch(IOException e){
             e.printStackTrace();
@@ -79,7 +125,7 @@ public class ServerImpl implements ServerProvider{
     }
 
     void sendRaw(ConnectionImpl c, Object object, SendMode mode){
-        server.send(c.hex, mode == SendMode.tcp ? Mode.reliable : Mode.unreliable, object);
+        server.send(c.hex, mode == SendMode.reliable ? Mode.reliable : Mode.unreliable, object);
     }
 
     @Override
@@ -119,8 +165,8 @@ public class ServerImpl implements ServerProvider{
     class ConnectionImpl extends NetConnection{
         final HexConnection hex;
 
-        public ConnectionImpl(HexConnection con, String address){
-            super(con.id, address);
+        public ConnectionImpl(HexConnection con){
+            super(con.id, con.address.getAddress().getHostAddress());
             this.hex = con;
         }
 

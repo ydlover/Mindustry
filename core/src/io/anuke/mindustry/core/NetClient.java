@@ -107,7 +107,7 @@ public class NetClient extends Module{
                 return;
             }
 
-            Net.send(c, SendMode.tcp);
+            Net.send(c, SendMode.reliable);
         });
 
         Net.handleClient(Disconnect.class, packet -> {

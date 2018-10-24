@@ -76,7 +76,7 @@ public class ClientImpl implements ClientProvider{
 
     @Override
     public void send(Object object, SendMode mode){
-        client.send(object, mode == SendMode.udp ? Mode.unreliable : Mode.reliable);
+        client.send(object, mode == SendMode.unreliable ? Mode.unreliable : Mode.reliable);
     }
 
     @Override
