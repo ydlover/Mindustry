@@ -3,15 +3,15 @@ package io.anuke.mindustry.io;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
-import io.anuke.mindustry.net.Net;
 import io.anuke.ucore.function.Consumer;
 
+import static io.anuke.mindustry.Vars.net;
 import static io.anuke.mindustry.Vars.releasesURL;
 
 public class Changelogs{
 
     public static void getChangelog(Consumer<Array<VersionInfo>> success, Consumer<Throwable> fail){
-        Net.http(releasesURL, "GET", result -> {
+        net.http(releasesURL, "GET", result -> {
             JsonReader reader = new JsonReader();
             JsonValue value = reader.parse(result).child;
             Array<VersionInfo> out = new Array<>();

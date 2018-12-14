@@ -8,15 +8,14 @@ import io.anuke.mindustry.game.EventType.TileChangeEvent;
 import io.anuke.mindustry.game.EventType.WorldLoadEvent;
 import io.anuke.mindustry.game.Team;
 import io.anuke.mindustry.game.Teams.TeamData;
-import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.world.Tile;
 import io.anuke.mindustry.world.meta.BlockFlag;
 import io.anuke.ucore.core.Events;
 import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.util.Geometry;
+import io.anuke.ucore.util.Structs;
 
-import static io.anuke.mindustry.Vars.state;
-import static io.anuke.mindustry.Vars.world;
+import static io.anuke.mindustry.Vars.*;
 
 public class Pathfinder{
     private long maxUpdate = TimeUtils.millisToNanos(4);
@@ -26,7 +25,7 @@ public class Pathfinder{
     public Pathfinder(){
         Events.on(WorldLoadEvent.class, event -> clear());
         Events.on(TileChangeEvent.class, event -> {
-            if(Net.client()) return;
+            if(net.client()) return;
 
             for(Team team : Team.all){
                 TeamData data = state.teams.get(team);
@@ -44,7 +43,7 @@ public class Pathfinder{
     }
 
     public void update(){
-        if(Net.client()) return;
+        if(net.client() || paths == null) return;
 
         for(Team team : Team.all){
             if(state.teams.isActive(team)){
@@ -82,7 +81,7 @@ public class Pathfinder{
     }
 
     public float getValueforTeam(Team team, int x, int y){
-        return paths == null || team.ordinal() >= paths.length ? 0 : paths[team.ordinal()].weights[x][y];
+        return paths == null || team.ordinal() >= paths.length ? 0 : Structs.inBounds(x, y, paths[team.ordinal()].weights) ? paths[team.ordinal()].weights[x][y] : 0;
     }
 
     private boolean passable(Tile tile, Team team){
@@ -155,7 +154,7 @@ public class Pathfinder{
                     int dx = tile.x + point.x, dy = tile.y + point.y;
                     Tile other = world.tile(dx, dy);
 
-                    if(other != null && (path.weights[dx][dy] == Float.MAX_VALUE || path.searches[dx][dy] < path.search)
+                    if(other != null && (path.weights[dx][dy] > cost + other.cost || path.searches[dx][dy] < path.search)
                             && passable(other, team)){
                         path.frontier.addFirst(world.tile(dx, dy));
                         path.weights[dx][dy] = cost + other.cost;
@@ -181,7 +180,7 @@ public class Pathfinder{
             }
         }
 
-        state.spawner.checkAllQuadrants();
+        world.spawner.checkAllQuadrants();
     }
 
     class PathData{

@@ -20,16 +20,10 @@ import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.security.ProviderInstaller;
 import io.anuke.mindustry.core.Platform;
-import io.anuke.mindustry.core.ThreadHandler.ThreadProvider;
 import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.io.SaveIO;
-import io.anuke.mindustry.net.DefaultThreadImpl;
-import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.ClientImpl;
-import io.anuke.mindustry.net.ServerImpl;
 import io.anuke.mindustry.ui.dialogs.FileChooser;
 import io.anuke.ucore.function.Consumer;
-import io.anuke.ucore.scene.ui.TextField;
 import io.anuke.ucore.scene.ui.layout.Unit;
 import io.anuke.ucore.util.Bundles;
 import io.anuke.ucore.util.Strings;
@@ -38,12 +32,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
 
 import static io.anuke.mindustry.Vars.*;
 
@@ -58,27 +47,6 @@ public class AndroidLauncher extends PatchedAndroidApplication{
         AndroidApplicationConfiguration config = new AndroidApplicationConfiguration();
         config.useImmersiveMode = true;
         Platform.instance = new Platform(){
-            DateFormat format = SimpleDateFormat.getDateTimeInstance();
-
-            @Override
-            public String format(Date date){
-                return format.format(date);
-            }
-
-            @Override
-            public String format(int number){
-                return NumberFormat.getIntegerInstance().format(number);
-            }
-
-            @Override
-            public void addDialog(TextField field, int length){
-                TextFieldDialogListener.add(field, 0, length);
-            }
-
-            @Override
-            public String getLocaleName(Locale locale){
-                return locale.getDisplayName(locale);
-            }
 
             @Override
             public void openDonations(){
@@ -86,15 +54,9 @@ public class AndroidLauncher extends PatchedAndroidApplication{
             }
 
             @Override
-            public ThreadProvider getThreadProvider(){
-                return new DefaultThreadImpl();
-            }
-
-            @Override
             public String getUUID(){
                 try{
-                    String s = Secure.getString(getContext().getContentResolver(),
-                    Secure.ANDROID_ID);
+                    String s = Secure.getString(getContext().getContentResolver(), Secure.ANDROID_ID);
                     int len = s.length();
                     byte[] data = new byte[len / 2];
                     for(int i = 0; i < len; i += 2){
@@ -163,15 +125,12 @@ public class AndroidLauncher extends PatchedAndroidApplication{
 
         config.hideStatusBar = true;
 
-        Net.setClientProvider(new ClientImpl());
-        Net.setServerProvider(new ServerImpl());
-
         initialize(new Mindustry(), config);
         checkFiles(getIntent());
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
         if(requestCode == PERMISSION_REQUEST_CODE){
             for(int i : grantResults){
                 if(i != PackageManager.PERMISSION_GRANTED) return;

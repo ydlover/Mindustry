@@ -2,6 +2,7 @@ package io.anuke.mindustry.world.blocks.storage;
 
 import io.anuke.mindustry.entities.TileEntity;
 import io.anuke.mindustry.type.Item;
+import io.anuke.mindustry.world.BarType;
 import io.anuke.mindustry.world.Block;
 import io.anuke.mindustry.world.Tile;
 
@@ -10,6 +11,22 @@ public abstract class StorageBlock extends Block{
     public StorageBlock(String name){
         super(name);
         hasItems = true;
+    }
+
+    @Override
+    public boolean acceptItem(Item item, Tile tile, Tile source){
+        return tile.entity.items.get(item) < getMaximumAccepted(tile, item);
+    }
+
+    @Override
+    public int getMaximumAccepted(Tile tile, Item item){
+        return itemCapacity;
+    }
+
+    @Override
+    public void setBars(){
+        super.setBars();
+        bars.remove(BarType.inventory);
     }
 
     @Override

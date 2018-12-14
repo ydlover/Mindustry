@@ -21,15 +21,13 @@ import io.anuke.ucore.util.Pooling;
 
 import java.util.Arrays;
 
-import static io.anuke.mindustry.Vars.gwt;
-
 public class FileChooser extends FloatingDialog{
     public static Predicate<FileHandle> pngFilter = file -> file.extension().equalsIgnoreCase("png");
     public static Predicate<FileHandle> mapFilter = file -> file.extension().equalsIgnoreCase(Vars.mapExtension);
     public static Predicate<FileHandle> jpegFilter = file -> file.extension().equalsIgnoreCase("png") || file.extension().equalsIgnoreCase("jpg") || file.extension().equalsIgnoreCase("jpeg");
     public static Predicate<FileHandle> defaultFilter = file -> true;
     private Table files;
-    private FileHandle homeDirectory = gwt ? Gdx.files.internal("") : Gdx.files.absolute(OS.isMac ? OS.getProperty("user.home") + "/Downloads/" :
+    private FileHandle homeDirectory = Gdx.files.absolute(OS.isMac ? OS.getProperty("user.home") + "/Downloads/" :
             Gdx.files.getExternalStoragePath());
     private FileHandle directory = homeDirectory;
     private ScrollPane pane;
@@ -40,10 +38,6 @@ public class FileChooser extends FloatingDialog{
     private Consumer<FileHandle> selectListener;
     private boolean open;
 
-    public FileChooser(String title, boolean open, Consumer<FileHandle> result){
-        this(title, defaultFilter, open, result);
-    }
-
     public FileChooser(String title, Predicate<FileHandle> filter, boolean open, Consumer<FileHandle> result){
         super(title);
         this.open = open;
@@ -52,7 +46,6 @@ public class FileChooser extends FloatingDialog{
     }
 
     private void setupWidgets(){
-        //getCell(content()).maxWidth(UIUtils.portrait() ? Gdx.graphics.getWidth() : Gdx.graphics.getWidth()/Unit.dp.scl(2f));
         content().margin(-10);
 
         Table content = new Table();
@@ -130,14 +123,14 @@ public class FileChooser extends FloatingDialog{
             updateFiles(true);
         });
 
-        icontable.defaults().height(50).growX().uniform();
+        icontable.defaults().height(50).growX().padTop(5).uniform();
         icontable.add(home);
         icontable.add(back);
         icontable.add(forward);
         icontable.add(up);
 
         Table fieldcontent = new Table();
-        fieldcontent.bottom().left().add(new Label("File Name:"));
+        fieldcontent.bottom().left().add(new Label("$text.filename"));
         fieldcontent.add(filefield).height(40f).fillX().expandX().padLeft(10f);
 
         Table buttons = new Table();
@@ -176,7 +169,7 @@ public class FileChooser extends FloatingDialog{
         Arrays.sort(handles, (a, b) -> {
             if(a.isDirectory() && !b.isDirectory()) return -1;
             if(!a.isDirectory() && b.isDirectory()) return 1;
-            return a.name().toUpperCase().compareTo(b.name().toUpperCase());
+            return String.CASE_INSENSITIVE_ORDER.compare(a.name(), b.name());
         });
         return handles;
     }
@@ -205,7 +198,7 @@ public class FileChooser extends FloatingDialog{
         //macs are confined to the Downloads/ directory
         if(!OS.isMac){
             Image upimage = new Image("icon-folder-parent");
-            TextButton upbutton = new TextButton(".." + directory.toString());
+            TextButton upbutton = new TextButton(".." + directory.toString(), "clear-toggle");
             upbutton.clicked(() -> {
                 directory = directory.parent();
                 updateFiles(true);
@@ -227,7 +220,7 @@ public class FileChooser extends FloatingDialog{
 
             String filename = file.name();
 
-            TextButton button = new TextButton(shorten(filename), "toggle");
+            TextButton button = new TextButton(shorten(filename), "clear-toggle");
             group.add(button);
 
             button.clicked(() -> {

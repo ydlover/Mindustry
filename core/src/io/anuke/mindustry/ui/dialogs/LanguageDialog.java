@@ -1,6 +1,5 @@
 package io.anuke.mindustry.ui.dialogs;
 
-import io.anuke.mindustry.core.Platform;
 import io.anuke.ucore.core.Settings;
 import io.anuke.ucore.scene.ui.ButtonGroup;
 import io.anuke.ucore.scene.ui.ScrollPane;
@@ -25,14 +24,13 @@ public class LanguageDialog extends FloatingDialog{
     private void setup(){
         Table langs = new Table();
         langs.marginRight(24f).marginLeft(24f);
-        ScrollPane pane = new ScrollPane(langs, "clear");
+        ScrollPane pane = new ScrollPane(langs);
         pane.setFadeScrollBars(false);
 
         ButtonGroup<TextButton> group = new ButtonGroup<>();
 
         for(Locale loc : locales){
-            TextButton button = new TextButton(Platform.instance.getLocaleName(loc), "toggle");
-            button.setChecked(getLocale().equals(loc));
+            TextButton button = new TextButton(loc.getDisplayName(loc), "toggle");
             button.clicked(() -> {
                 if(getLocale().equals(loc)) return;
                 Settings.putString("locale", loc.toString());
@@ -40,9 +38,7 @@ public class LanguageDialog extends FloatingDialog{
                 Log.info("Setting locale: {0}", loc.toString());
                 ui.showInfo("$text.language.restart");
             });
-            langs.add(button).group(group).update(t -> {
-                t.setChecked(loc.equals(getLocale()));
-            }).size(400f, 60f).row();
+            langs.add(button).group(group).update(t -> t.setChecked(loc.equals(getLocale()))).size(400f, 50f).pad(2).row();
         }
 
         content().add(pane);
@@ -50,19 +46,40 @@ public class LanguageDialog extends FloatingDialog{
 
     public Locale getLocale(){
         String loc = Settings.getString("locale");
-        if(loc.equals("default")){
-            return Locale.getDefault();
-        }else{
-            if(lastLocale == null || !lastLocale.toString().equals(loc)){
-                if(loc.contains("_")){
-                    String[] split = loc.split("_");
-                    lastLocale = new Locale(split[0], split[1]);
-                }else{
-                    lastLocale = new Locale(loc);
-                }
-            }
 
-            return lastLocale;
+        if(loc.equals("default")){
+            findClosestLocale();
         }
+
+        if(lastLocale == null || !lastLocale.toString().equals(loc)){
+            if(loc.contains("_")){
+                String[] split = loc.split("_");
+                lastLocale = new Locale(split[0], split[1]);
+            }else{
+                lastLocale = new Locale(loc);
+            }
+        }
+
+        return lastLocale;
+    }
+
+    void findClosestLocale(){
+        //check exact locale
+        for(Locale l : locales){
+            if(l.equals(Locale.getDefault())){
+                Settings.putString("locale", l.toString());
+                return;
+            }
+        }
+
+        //find by language
+        for(Locale l : locales){
+            if(l.getLanguage().equals(Locale.getDefault().getLanguage())){
+                Settings.putString("locale", l.toString());
+                return;
+            }
+        }
+
+        Settings.putString("locale", new Locale("en").toString());
     }
 }

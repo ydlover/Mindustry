@@ -1,9 +1,9 @@
 package io.anuke.mindustry;
 
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.OrderedMap;
 import com.badlogic.gdx.utils.PropertiesUtils;
+import io.anuke.ucore.function.BiFunction;
 import io.anuke.ucore.util.Log;
 
 import java.io.File;
@@ -34,7 +34,7 @@ public class BundleLauncher {
                 removals.clear();
 
                 for(String key : other.orderedKeys()){
-                    if(!base.containsKey(key) && !key.contains(".description")){
+                    if(!base.containsKey(key)){
                         removals.add(key);
                         Log.info("&lr- Removing unused key '{0}'...", key);
                     }
@@ -47,23 +47,27 @@ public class BundleLauncher {
                 int added = 0;
 
                 for(String key : base.orderedKeys()){
-                    if(!other.containsKey(key)){
+                    if(!other.containsKey(key) || other.get(key).trim().isEmpty()){
                         other.put(key, base.get(key));
                         added ++;
                         Log.info("&lc- Adding missing key '{0}'...", key);
                     }
                 }
 
+                BiFunction<String, String, String> processor = (key, value) -> (key + " = " + value).replace("\\", "\\\\").replace("\n", "\\n") + "\n";
+
                 Path output = child.resolveSibling("output/" + child.getFileName());
 
                 Log.info("&lc{0} keys added.", added);
                 Log.info("Writing bundle to {0}", output);
                 StringBuilder result = new StringBuilder();
-                for(ObjectMap.Entry<String, String> e : other.entries()){
-                    String entry = e.key + " = " + e.value;
-                    result.append(entry.replace("\\", "\\\\").replace("\n", "\\n"));
-                    result.append("\n");
+
+                //add everything ordered
+                for(String key : base.orderedKeys()){
+                    result.append(processor.get(key, other.get(key)));
+                    other.remove(key);
                 }
+
                 Files.write(child, result.toString().getBytes(StandardCharsets.UTF_8));
 
             }catch (IOException e){

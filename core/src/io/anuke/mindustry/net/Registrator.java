@@ -5,9 +5,8 @@ import io.anuke.mindustry.net.Packets.*;
 import io.anuke.ucore.function.Supplier;
 
 public class Registrator{
+    //at this point, the amount of registered classes has gotten so low, it might be a good idea to handle this differently...
     private static ClassEntry[] classes = {
-        new ClassEntry(StreamBegin.class, StreamBegin::new),
-        new ClassEntry(StreamChunk.class, StreamChunk::new),
         new ClassEntry(WorldStream.class, WorldStream::new),
         new ClassEntry(ConnectPacket.class, ConnectPacket::new),
         new ClassEntry(InvokePacket.class, InvokePacket::new)

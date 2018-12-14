@@ -16,6 +16,7 @@ import io.anuke.mindustry.entities.effect.Lightning;
 import io.anuke.mindustry.game.ContentList;
 import io.anuke.mindustry.graphics.Palette;
 import io.anuke.mindustry.world.Tile;
+import io.anuke.mindustry.world.blocks.BuildBlock;
 import io.anuke.mindustry.world.blocks.distribution.MassDriver.DriverBulletData;
 import io.anuke.ucore.core.Effects;
 import io.anuke.ucore.core.Timers;
@@ -38,16 +39,23 @@ public class TurretBullets extends BulletList implements ContentList{
                 lifetime = Lightning.lifetime;
                 hiteffect = BulletFx.hitLancer;
                 despawneffect = Fx.none;
+                status = StatusEffects.shocked;
+                statusIntensity = 1f;
             }
         };
 
         healBullet = new BulletType(5.2f, 13){
-            float healAmount = 21f;
+            float healPercent = 3f;
 
             {
                 hiteffect = BulletFx.hitLaser;
                 despawneffect = BulletFx.hitLaser;
                 collidesTeam = true;
+            }
+
+            @Override
+            public boolean collides(Bullet b, Tile tile){
+                return tile.getTeam() != b.getTeam() || tile.entity.healthf() < 1f;
             }
 
             @Override
@@ -63,11 +71,11 @@ public class TurretBullets extends BulletList implements ContentList{
             @Override
             public void hitTile(Bullet b, Tile tile){
                 super.hit(b);
+                tile = tile.target();
 
-                if(tile.getTeam() == b.getTeam()){
-                    Effects.effect(BlockFx.healBlock, tile.drawx(), tile.drawy(), tile.block().size);
-                    tile.entity.health += healAmount;
-                    tile.entity.health = Mathf.clamp(tile.entity.health, 0, tile.block().health);
+                if(tile != null && tile.getTeam() == b.getTeam() && !(tile.block() instanceof BuildBlock)){
+                    Effects.effect(BlockFx.healBlockFull, Palette.heal, tile.drawx(), tile.drawy(), tile.block().size);
+                    tile.entity.healBy(healPercent / 100f * tile.entity.maxHealth());
                 }
             }
         };
@@ -303,7 +311,7 @@ public class TurretBullets extends BulletList implements ContentList{
             }
         };
 
-        arc = new BulletType(0.001f, 30){
+        arc = new BulletType(0.001f, 26){
             {
                 lifetime = 1;
                 despawneffect = Fx.none;
@@ -326,7 +334,7 @@ public class TurretBullets extends BulletList implements ContentList{
                 lifetime = 200f;
                 despawneffect = BlockFx.smeltsmoke;
                 hiteffect = BulletFx.hitBulletBig;
-                drag = 0.01f;
+                drag = 0.005f;
             }
 
             @Override

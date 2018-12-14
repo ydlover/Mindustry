@@ -22,7 +22,7 @@ import io.anuke.mindustry.world.meta.BlockBar;
 import io.anuke.mindustry.world.meta.BlockFlag;
 import io.anuke.mindustry.world.meta.BlockStat;
 import io.anuke.mindustry.world.meta.StatUnit;
-import io.anuke.mindustry.world.modules.InventoryModule;
+import io.anuke.mindustry.world.modules.ItemModule;
 import io.anuke.ucore.core.Effects;
 import io.anuke.ucore.core.Graphics;
 import io.anuke.ucore.graphics.Draw;
@@ -30,9 +30,11 @@ import io.anuke.ucore.graphics.Lines;
 import io.anuke.ucore.util.EnumSet;
 import io.anuke.ucore.util.Mathf;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
+
+import static io.anuke.mindustry.Vars.net;
 
 public class UnitFactory extends Block{
     protected float gracePeriodMultiplier = 15f;
@@ -51,7 +53,7 @@ public class UnitFactory extends Block{
         hasItems = true;
         solid = false;
         itemCapacity = 10;
-        flags = EnumSet.of(BlockFlag.producer);
+        flags = EnumSet.of(BlockFlag.producer, BlockFlag.target);
 
         consumes.require(ConsumeItems.class);
     }
@@ -68,10 +70,10 @@ public class UnitFactory extends Block{
         Effects.shake(2f, 3f, entity);
         Effects.effect(BlockFx.producesmoke, tile.drawx(), tile.drawy());
 
-        if(!Net.client()){
+        if(!net.client()){
             BaseUnit unit = factory.type.create(tile.getTeam());
             unit.setSpawner(tile);
-            unit.set(tile.drawx(), tile.drawy());
+            unit.set(tile.drawx() + Mathf.range(4), tile.drawy() + Mathf.range(4));
             unit.add();
             unit.getVelocity().y = factory.launchVelocity;
         }
@@ -211,7 +213,7 @@ public class UnitFactory extends Block{
         return new UnitFactoryEntity();
     }
 
-    protected boolean hasRequirements(InventoryModule inv, float fraction){
+    protected boolean hasRequirements(ItemModule inv, float fraction){
         for(ItemStack stack : consumes.items()){
             if(!inv.has(stack.item, (int) (fraction * stack.amount))){
                 return false;
@@ -227,13 +229,13 @@ public class UnitFactory extends Block{
         public float warmup; //only for enemy spawners
 
         @Override
-        public void write(DataOutputStream stream) throws IOException{
+        public void write(DataOutput stream) throws IOException{
             stream.writeFloat(buildTime);
             stream.writeFloat(warmup);
         }
 
         @Override
-        public void read(DataInputStream stream) throws IOException{
+        public void read(DataInput stream) throws IOException{
             buildTime = stream.readFloat();
             warmup = stream.readFloat();
         }

@@ -9,29 +9,20 @@ import com.badlogic.gdx.utils.Base64Coder;
 import io.anuke.mindustry.Vars;
 import io.anuke.mindustry.core.GameState.State;
 import io.anuke.mindustry.core.Platform;
-import io.anuke.mindustry.core.ThreadHandler.ThreadProvider;
 import io.anuke.mindustry.game.GameMode;
-import io.anuke.mindustry.net.DefaultThreadImpl;
-import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.ui.dialogs.FileChooser;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.util.OS;
 import io.anuke.ucore.util.Strings;
 
 import java.net.NetworkInterface;
-import java.text.DateFormat;
-import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Enumeration;
-import java.util.Locale;
 
 import static io.anuke.mindustry.Vars.*;
 
 public class DesktopPlatform extends Platform{
     final static boolean useDiscord = OS.is64Bit;
     final static String applicationId = "398246104468291591";
-    final static DateFormat format = SimpleDateFormat.getDateTimeInstance();
     String[] args;
 
     public DesktopPlatform(String[] args){
@@ -51,21 +42,6 @@ public class DesktopPlatform extends Platform{
     }
 
     @Override
-    public String format(Date date){
-        return format.format(date);
-    }
-
-    @Override
-    public String format(int number){
-        return NumberFormat.getIntegerInstance().format(number);
-    }
-
-    @Override
-    public String getLocaleName(Locale locale){
-        return locale.getDisplayName(locale);
-    }
-
-    @Override
     public void updateRPC(){
 
         if(!useDiscord) return;
@@ -74,21 +50,23 @@ public class DesktopPlatform extends Platform{
 
         if(!state.is(State.menu)){
             presence.state = Strings.capitalize(state.mode.name());
-            if(state.mode == GameMode.noWaves){
+            if(world.getMap() == null){
+                presence.details = "Unknown Map";
+            }else if(state.mode.disableWaves){
                 presence.details = Strings.capitalize(world.getMap().name);
             }else{
                 presence.details = Strings.capitalize(world.getMap().name) + " | Wave " + state.wave;
                 presence.largeImageText = "Wave " + state.wave;
             }
 
-            if(state.mode != GameMode.noWaves){
+            if(state.mode != GameMode.attack){
                 presence.state = Strings.capitalize(state.mode.name());
             }else{
                 presence.state = unitGroups[players[0].getTeam().ordinal()].size() == 1 ? "1 Unit Active" :
                 (unitGroups[players[0].getTeam().ordinal()].size() + " Units Active");
             }
 
-            if(Net.active()){
+            if(net.active()){
                 presence.partyMax = 16;
                 presence.partySize = playerGroup.size();
             }
@@ -108,11 +86,6 @@ public class DesktopPlatform extends Platform{
     @Override
     public void onGameExit(){
         if(useDiscord) DiscordRPC.INSTANCE.Discord_Shutdown();
-    }
-
-    @Override
-    public ThreadProvider getThreadProvider(){
-        return new DefaultThreadImpl();
     }
 
     @Override

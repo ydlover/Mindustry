@@ -8,14 +8,13 @@ import io.anuke.annotations.Annotations.Loc;
 import io.anuke.annotations.Annotations.Remote;
 import io.anuke.mindustry.content.blocks.Blocks;
 import io.anuke.mindustry.content.fx.EnvironmentFx;
-import io.anuke.mindustry.core.World;
 import io.anuke.mindustry.entities.Player;
-import io.anuke.mindustry.entities.Units;
 import io.anuke.mindustry.entities.effect.ItemTransfer;
 import io.anuke.mindustry.entities.traits.BuilderTrait.BuildRequest;
 import io.anuke.mindustry.gen.Call;
 import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.net.ValidateException;
+import io.anuke.mindustry.type.Item;
 import io.anuke.mindustry.type.ItemStack;
 import io.anuke.mindustry.type.Recipe;
 import io.anuke.mindustry.ui.fragments.OverlayFragment;
@@ -26,7 +25,7 @@ import io.anuke.ucore.core.Effects;
 import io.anuke.ucore.core.Graphics;
 import io.anuke.ucore.core.Inputs;
 import io.anuke.ucore.core.Timers;
-import io.anuke.ucore.scene.Group;
+import io.anuke.ucore.scene.ui.layout.Table;
 import io.anuke.ucore.util.Angles;
 import io.anuke.ucore.util.Mathf;
 import io.anuke.ucore.util.Translator;
@@ -59,7 +58,7 @@ public abstract class InputHandler extends InputAdapter{
 
     @Remote(targets = Loc.client, called = Loc.server)
     public static void dropItem(Player player, float angle){
-        if(Net.server() && !player.inventory.hasItem()){
+        if(net.server() && !player.inventory.hasItem()){
             throw new ValidateException(player, "Player cannot drop an item.");
         }
 
@@ -69,7 +68,7 @@ public abstract class InputHandler extends InputAdapter{
 
     @Remote(targets = Loc.both, forward = true, called = Loc.server)
     public static void transferInventory(Player player, Tile tile){
-        if(Net.server() && (!player.inventory.hasItem() || player.isTransferring)){
+        if(net.server() && (!player.inventory.hasItem() || player.isTransferring)){
             throw new ValidateException(player, "Player cannot transfer an item.");
         }
 
@@ -78,10 +77,11 @@ public abstract class InputHandler extends InputAdapter{
 
             player.isTransferring = true;
 
-            ItemStack stack = player.inventory.getItem();
-            int accepted = tile.block().acceptStack(stack.item, stack.amount, tile, player);
+            Item item = player.inventory.getItem().item;
+            int amount = player.inventory.getItem().amount;
+            int accepted = tile.block().acceptStack(item, amount, tile, player);
+            player.inventory.getItem().amount -= accepted;
 
-            boolean clear = stack.amount == accepted;
             int sent = Mathf.clamp(accepted / 4, 1, 8);
             int removed = accepted / sent;
             int[] remaining = {accepted, accepted};
@@ -90,29 +90,24 @@ public abstract class InputHandler extends InputAdapter{
             for(int i = 0; i < sent; i++){
                 boolean end = i == sent - 1;
                 Timers.run(i * 3, () -> {
-                    tile.block().getStackOffset(stack.item, tile, stackTrns);
+                    tile.block().getStackOffset(item, tile, stackTrns);
 
-                    ItemTransfer.create(stack.item,
+                    ItemTransfer.create(item,
                             player.x + Angles.trnsx(player.rotation + 180f, backTrns), player.y + Angles.trnsy(player.rotation + 180f, backTrns),
                             new Translator(tile.drawx() + stackTrns.x, tile.drawy() + stackTrns.y), () -> {
-                                if(tile.block() != block || tile.entity == null) return;
+                                if(tile.block() != block || tile.entity == null || tile.entity.items == null) return;
 
-                                tile.block().handleStack(stack.item, removed, tile, player);
+                                tile.block().handleStack(item, removed, tile, player);
                                 remaining[1] -= removed;
 
                                 if(end && remaining[1] > 0){
-                                    tile.block().handleStack(stack.item, remaining[1], tile, player);
+                                    tile.block().handleStack(item, remaining[1], tile, player);
                                 }
                             });
 
-                    stack.amount -= removed;
                     remaining[0] -= removed;
 
                     if(end){
-                        stack.amount -= remaining[0];
-                        if(clear){
-                            player.inventory.clearItem();
-                        }
                         player.isTransferring = false;
                     }
                 });
@@ -150,7 +145,7 @@ public abstract class InputHandler extends InputAdapter{
         return false;
     }
 
-    public void buildUI(Group group){
+    public void buildUI(Table table){
 
     }
 
@@ -198,7 +193,7 @@ public abstract class InputHandler extends InputAdapter{
         }
 
         //call tapped event
-        if(tile.getTeam() == player.getTeam()){
+        if(!consumed && tile.getTeam() == player.getTeam()){
             Call.onTileTapped(player, tile);
         }
 
@@ -211,28 +206,22 @@ public abstract class InputHandler extends InputAdapter{
                 consumed = true;
                 showedInventory = true;
             }
-
-            if(tile.block().consumes.hasAny()){
-                frag.consume.show(tile);
-                consumed = true;
-                showedConsume = true;
-            }
         }
 
         if(!showedInventory){
             frag.inv.hide();
         }
 
-        if(!showedConsume){
-            frag.consume.hide();
+        if(!consumed && player.isBuilding()){
+            player.clearBuilding();
+            recipe = null;
+            return true;
         }
 
         return consumed;
     }
 
-    /**
-     * Tries to select the player to drop off items, returns true if successful.
-     */
+    /**Tries to select the player to drop off items, returns true if successful.*/
     boolean tryTapPlayer(float x, float y){
         if(canTapPlayer(x, y)){
             droppingItem = true;
@@ -245,9 +234,7 @@ public abstract class InputHandler extends InputAdapter{
         return Vector2.dst(x, y, player.x, player.y) <= playerSelectRange && player.inventory.hasItem();
     }
 
-    /**
-     * Tries to begin mining a tile, returns true if successful.
-     */
+    /**Tries to begin mining a tile, returns true if successful.*/
     boolean tryBeginMine(Tile tile){
         if(canMine(tile)){
             //if a block is clicked twice, reset it
@@ -262,20 +249,17 @@ public abstract class InputHandler extends InputAdapter{
                 && tile.floor().drops != null && tile.floor().drops.item.hardness <= player.mech.drillPower
                 && !tile.floor().playerUnmineable
                 && player.inventory.canAcceptItem(tile.floor().drops.item)
-                && Units.getClosestEnemy(player.getTeam(), tile.worldx(), tile.worldy(), 40f, e -> true) == null //don't being mining when an enemy is near
                 && tile.block() == Blocks.air && player.distanceTo(tile.worldx(), tile.worldy()) <= Player.mineDistance;
     }
 
-    /**
-     * Returns the tile at the specified MOUSE coordinates.
-     */
+    /**Returns the tile at the specified MOUSE coordinates.*/
     Tile tileAt(float x, float y){
         return world.tile(tileX(x), tileY(y));
     }
 
     int tileX(float cursorX){
         Vector2 vec = Graphics.world(cursorX, 0);
-        if(isPlacing()){
+        if(selectedBlock()){
             vec.sub(recipe.result.offset(), recipe.result.offset());
         }
         return world.toTile(vec.x);
@@ -283,10 +267,14 @@ public abstract class InputHandler extends InputAdapter{
 
     int tileY(float cursorY){
         Vector2 vec = Graphics.world(0, cursorY);
-        if(isPlacing()){
+        if(selectedBlock()){
             vec.sub(recipe.result.offset(), recipe.result.offset());
         }
         return world.toTile(vec.y);
+    }
+
+    public boolean selectedBlock(){
+        return isPlacing();
     }
 
     public boolean isPlacing(){
@@ -351,7 +339,7 @@ public abstract class InputHandler extends InputAdapter{
         for(Tile tile : state.teams.get(player.getTeam()).cores){
             if(tile.distanceTo(x * tilesize, y * tilesize) < coreBuildRange){
                 return Build.validPlace(player.getTeam(), x, y, type, rotation) &&
-                        Vector2.dst(player.x, player.y, x * tilesize, y * tilesize) < Player.placeDistance;
+                Vector2.dst(player.x, player.y, x * tilesize, y * tilesize) < Player.placeDistance;
             }
         }
 
@@ -363,12 +351,10 @@ public abstract class InputHandler extends InputAdapter{
     }
 
     public void placeBlock(int x, int y, Recipe recipe, int rotation){
-        //todo multiplayer support
         player.addBuildRequest(new BuildRequest(x, y, rotation, recipe));
     }
 
     public void breakBlock(int x, int y){
-        //todo multiplayer support
         Tile tile = world.tile(x, y).target();
         player.addBuildRequest(new BuildRequest(tile.x, tile.y));
     }

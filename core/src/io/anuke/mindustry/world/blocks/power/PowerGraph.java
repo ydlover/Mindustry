@@ -1,6 +1,7 @@
 package io.anuke.mindustry.world.blocks.power;
 
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.IntSet;
 import com.badlogic.gdx.utils.ObjectSet;
 import com.badlogic.gdx.utils.Queue;
 import io.anuke.mindustry.world.Tile;
@@ -11,6 +12,7 @@ public class PowerGraph{
     private final static Queue<Tile> queue = new Queue<>();
     private final static Array<Tile> outArray1 = new Array<>();
     private final static Array<Tile> outArray2 = new Array<>();
+    private final static IntSet closedSet = new IntSet();
 
     private final ObjectSet<Tile> producers = new ObjectSet<>();
     private final ObjectSet<Tile> consumers = new ObjectSet<>();
@@ -28,55 +30,80 @@ public class PowerGraph{
         return graphID;
     }
 
-    public synchronized void update(){
+    public void update(){
         if(threads.getFrameID() == lastFrameUpdated || consumers.size == 0 || producers.size == 0){
             return;
         }
 
         lastFrameUpdated = threads.getFrameID();
 
-        float totalInput = 0f;
+        boolean charge = false;
 
+        float totalInput = 0f;
+        float bufferInput = 0f;
         for(Tile producer : producers){
-            totalInput += producer.entity.power.amount;
+            if(producer.block().consumesPower){
+                bufferInput += producer.entity.power.amount;
+            }else{
+                totalInput += producer.entity.power.amount;
+            }
         }
 
-        for(Tile producer : producers){
-            float accumulator = producer.entity.power.amount;
-
-            if(accumulator <= 0.0001f) continue;
-
-            float toEach = accumulator / consumers.size;
-            float outputs = 0f;
-
-            for(Tile tile : consumers){
-                outputs += Math.min(tile.block().powerCapacity - tile.entity.power.amount, toEach) / toEach;
+        float maxOutput = 0f;
+        float bufferOutput = 0f;
+        for(Tile consumer : consumers){
+            if(consumer.block().outputsPower){
+                bufferOutput += consumer.block().powerCapacity - consumer.entity.power.amount;
+            }else{
+                maxOutput += consumer.block().powerCapacity - consumer.entity.power.amount;
             }
+        }
 
-            float finalEach = toEach / outputs;
-            float buffer = 0f;
+        if(maxOutput < totalInput){
+            charge = true;
+        }
 
-            if(Float.isNaN(finalEach) || Float.isInfinite(finalEach)){
+        if(totalInput + bufferInput <= 0.0001f || maxOutput + bufferOutput <= 0.0001f){
+            return;
+        }
+
+        float bufferUsed;
+        if(charge){
+            bufferUsed = Math.min((totalInput - maxOutput) / bufferOutput, 1f);
+        }else{
+            bufferUsed = Math.min((maxOutput - totalInput) / bufferInput, 1f);
+        }
+
+        float inputUsed = charge ? Math.min((maxOutput + bufferOutput) / totalInput, 1f) : 1f;
+        for(Tile producer : producers){
+            if(producer.block().consumesPower){
+                if(!charge){
+                    producer.entity.power.amount -= producer.entity.power.amount * bufferUsed;
+                }
                 continue;
             }
+            producer.entity.power.amount -= producer.entity.power.amount * inputUsed;
+        }
 
-            for(Tile tile : consumers){
-                float used = Math.min(tile.block().powerCapacity - tile.entity.power.amount, finalEach) * accumulator / totalInput;
-                buffer += used;
-                tile.entity.power.amount += used;
+        float outputSatisfied = charge ? 1f : Math.min((totalInput + bufferInput) / maxOutput, 1f);
+        for(Tile consumer : consumers){
+            if(consumer.block().outputsPower){
+                if(charge){
+                    consumer.entity.power.amount += (consumer.block().powerCapacity - consumer.entity.power.amount) * bufferUsed;
+                }
+                continue;
             }
-
-            producer.entity.power.amount -= buffer;
+            consumer.entity.power.amount += (consumer.block().powerCapacity - consumer.entity.power.amount) * outputSatisfied;
         }
     }
 
-    public synchronized void add(PowerGraph graph){
+    public void add(PowerGraph graph){
         for(Tile tile : graph.all){
             add(tile);
         }
     }
 
-    public synchronized void add(Tile tile){
+    public void add(Tile tile){
         tile.entity.power.graph = this;
         all.add(tile);
 
@@ -89,32 +116,35 @@ public class PowerGraph{
         }
     }
 
-    public synchronized void clear(){
+    public void clear(){
         for(Tile other : all){
-            other.entity.power.graph = null;
+            if(other.entity != null && other.entity.power != null) other.entity.power.graph = null;
         }
         all.clear();
         producers.clear();
         consumers.clear();
     }
 
-    public synchronized void reflow(Tile tile){
+    public void reflow(Tile tile){
         queue.clear();
         queue.addLast(tile);
+        closedSet.clear();
         while(queue.size > 0){
             Tile child = queue.removeFirst();
             child.entity.power.graph = this;
             add(child);
             for(Tile next : child.block().getPowerConnections(child, outArray2)){
-                if(next.entity.power != null && next.entity.power.graph == null){
+                if(next.entity.power != null && next.entity.power.graph == null && !closedSet.contains(next.pos())){
                     queue.addLast(next);
+                    closedSet.add(next.pos());
                 }
             }
         }
     }
 
-    public synchronized void remove(Tile tile){
+    public void remove(Tile tile){
         clear();
+        closedSet.clear();
 
         for(Tile other : tile.block().getPowerConnections(tile, outArray1)){
             if(other.entity.power == null || other.entity.power.graph != null) continue;
@@ -126,8 +156,9 @@ public class PowerGraph{
                 child.entity.power.graph = graph;
                 graph.add(child);
                 for(Tile next : child.block().getPowerConnections(child, outArray2)){
-                    if(next != tile && next.entity.power != null && next.entity.power.graph == null){
+                    if(next != tile && next.entity.power != null && next.entity.power.graph == null && !closedSet.contains(next.pos())){
                         queue.addLast(next);
+                        closedSet.add(next.pos());
                     }
                 }
             }

@@ -15,9 +15,7 @@ import static io.anuke.mindustry.Vars.tilesize;
 public abstract class ItemLiquidGenerator extends ItemGenerator{
     protected float minLiquidEfficiency = 0.2f;
     protected float powerPerLiquid = 0.13f;
-    /**
-     * Maximum liquid used per frame.
-     */
+    /**Maximum liquid used per frame.*/
     protected float maxLiquidGenerate = 0.4f;
 
     public ItemLiquidGenerator(String name){
@@ -26,6 +24,11 @@ public abstract class ItemLiquidGenerator extends ItemGenerator{
         liquidCapacity = 10f;
 
         consumes.add(new ConsumeLiquidFilter(liquid -> getLiquidEfficiency(liquid) >= minLiquidEfficiency, 0.001f, true)).update(false).optional(true);
+    }
+
+    @Override
+    public void init(){
+        super.init();
     }
 
     @Override
@@ -57,7 +60,6 @@ public abstract class ItemLiquidGenerator extends ItemGenerator{
         }else if(entity.cons.valid()){
 
             float maxPower = Math.min(powerCapacity - entity.power.amount, powerOutput * entity.delta()) * entity.efficiency;
-            float mfract = maxPower / (powerOutput);
 
             if(entity.generateTime <= 0f && entity.items.total() > 0){
                 Effects.effect(generateEffect, tile.worldx() + Mathf.range(3f), tile.worldy() + Mathf.range(3f));
@@ -68,7 +70,7 @@ public abstract class ItemLiquidGenerator extends ItemGenerator{
             }
 
             if(entity.generateTime > 0f){
-                entity.generateTime -= 1f / itemDuration * mfract * entity.delta();
+                entity.generateTime -= 1f / itemDuration * entity.delta();
                 entity.power.amount += maxPower;
                 entity.generateTime = Mathf.clamp(entity.generateTime);
 

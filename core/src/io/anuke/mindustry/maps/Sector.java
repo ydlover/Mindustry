@@ -5,8 +5,7 @@ import com.badlogic.gdx.utils.Array;
 import io.anuke.annotations.Annotations.Serialize;
 import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.game.SpawnGroup;
-import io.anuke.mindustry.maps.missions.Mission;
-import io.anuke.mindustry.maps.missions.VictoryMission;
+import io.anuke.mindustry.maps.missions.*;
 import io.anuke.mindustry.type.ItemStack;
 import io.anuke.ucore.util.Bits;
 
@@ -23,8 +22,6 @@ public class Sector{
     public boolean complete;
     /**Slot ID of this sector's save. -1 means no save has been created.*/
     public int saveID = -1;
-    /**Sector size; if more than 1, the coordinates are the bottom left corner.*/
-    public int width = 1, height = 1;
     /**Num of missions in this sector that have been completed so far.*/
     public int completedMissions;
 
@@ -38,8 +35,21 @@ public class Sector{
     public transient int difficulty;
     /**Items the player starts with on this sector.*/
     public transient Array<ItemStack> startingItems;
-    /**Last expansion parameters.*/
-    public transient int lastExpandX, lastExpandY;
+
+    public Mission getDominantMission(){
+        for(Mission mission : missions){
+            if(mission instanceof WaveMission || mission instanceof BattleMission){
+                return mission;
+            }
+        }
+
+        for(Mission mission : missions){
+            if(mission instanceof BlockMission){
+                return mission;
+            }
+        }
+        return missions.first();
+    }
 
     public Mission currentMission(){
         return completedMissions >= missions.size ? victoryMission : missions.get(completedMissions);
@@ -57,7 +67,7 @@ public class Sector{
         return !headless && control.saves.getByID(saveID) != null;
     }
 
-    public int packedPosition(){
+    public int pos(){
         return Bits.packInt(x, y);
     }
 }

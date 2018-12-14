@@ -19,7 +19,6 @@ import io.anuke.mindustry.graphics.Shaders;
 import io.anuke.mindustry.maps.TutorialSector;
 import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.type.Item;
-import io.anuke.mindustry.type.ItemType;
 import io.anuke.mindustry.world.BarType;
 import io.anuke.mindustry.world.Tile;
 import io.anuke.mindustry.world.meta.BlockFlag;
@@ -29,16 +28,13 @@ import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.graphics.Draw;
 import io.anuke.ucore.graphics.Lines;
 import io.anuke.ucore.util.EnumSet;
-import io.anuke.ucore.util.Log;
 import io.anuke.ucore.util.Mathf;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
-import static io.anuke.mindustry.Vars.netServer;
-import static io.anuke.mindustry.Vars.state;
-import static io.anuke.mindustry.Vars.unitGroups;
+import static io.anuke.mindustry.Vars.*;
 
 public class CoreBlock extends StorageBlock{
     protected float droneRespawnDuration = 60 * 6;
@@ -55,7 +51,6 @@ public class CoreBlock extends StorageBlock{
         update = true;
         size = 3;
         hasItems = true;
-        itemCapacity = 2000;
         viewRange = 200f;
         flags = EnumSet.of(BlockFlag.resupplyPoint, BlockFlag.target);
     }
@@ -74,16 +69,31 @@ public class CoreBlock extends StorageBlock{
         entity.currentUnit.setNet(tile.drawx(), tile.drawy());
         entity.currentUnit.add();
         entity.currentUnit = null;
+
+        if(player instanceof Player){
+            ((Player) player).endRespawning();
+        }
     }
 
     @Remote(called = Loc.server)
     public static void setCoreSolid(Tile tile, boolean solid){
+        if(tile == null) return;
         CoreEntity entity = tile.entity();
         if(entity != null) entity.solid = solid;
     }
 
     @Override
+    public int getMaximumAccepted(Tile tile, Item item){
+        return itemCapacity * state.teams.get(tile.getTeam()).cores.size;
+    }
+
+    @Override
     public void onProximityUpdate(Tile tile) {
+        for(Tile other : state.teams.get(tile.getTeam()).cores){
+            if(other != tile){
+                tile.entity.items = other.entity.items;
+            }
+        }
         state.teams.get(tile.getTeam()).cores.add(tile);
     }
 
@@ -95,6 +105,11 @@ public class CoreBlock extends StorageBlock{
     @Override
     public void removed(Tile tile){
         state.teams.get(tile.getTeam()).cores.remove(tile);
+
+        int max = itemCapacity * state.teams.get(tile.getTeam()).cores.size;
+        for(Item item : content.items()){
+            tile.entity.items.set(item, Math.min(tile.entity.items.get(item), max));
+        }
     }
 
     @Override
@@ -162,27 +177,8 @@ public class CoreBlock extends StorageBlock{
     }
 
     @Override
-    public int acceptStack(Item item, int amount, Tile tile, Unit source){
-        if(acceptItem(item, tile, tile) && hasItems && (source == null || source.getTeam() == tile.getTeam())){
-            return Math.min(itemCapacity - tile.entity.items.get(item), amount);
-        }else{
-            return 0;
-        }
-    }
-
-    @Override
-    public int getMaximumAccepted(Tile tile, Item item){
-        return itemCapacity;
-    }
-
-    @Override
-    public boolean acceptItem(Item item, Tile tile, Tile source){
-        return tile.entity.items.get(item) < itemCapacity && item.type == ItemType.material;
-    }
-
-    @Override
     public void handleItem(Item item, Tile tile, Tile source){
-        if(Net.server() || !Net.active()) super.handleItem(item, tile, source);
+        if(net.server() || !net.active()) super.handleItem(item, tile, source);
     }
 
     @Override
@@ -208,7 +204,7 @@ public class CoreBlock extends StorageBlock{
         }else if(!netServer.isWaitingForPlayers()){
             entity.warmup += Timers.delta();
 
-            if(entity.solid && entity.warmup > 60f && unitGroups[tile.getTeamID()].getByID(entity.droneID) == null && !Net.client()){
+            if(entity.solid && entity.warmup > 60f && unitGroups[tile.getTeamID()].getByID(entity.droneID) == null && !net.client()){
 
                 boolean found = false;
                 for(BaseUnit unit : unitGroups[tile.getTeamID()].all()){
@@ -264,13 +260,13 @@ public class CoreBlock extends StorageBlock{
         }
 
         @Override
-        public void write(DataOutputStream stream) throws IOException{
+        public void write(DataOutput stream) throws IOException{
             stream.writeBoolean(solid);
             stream.writeInt(droneID);
         }
 
         @Override
-        public void read(DataInputStream stream) throws IOException{
+        public void read(DataInput stream) throws IOException{
             solid = stream.readBoolean();
             droneID = stream.readInt();
         }

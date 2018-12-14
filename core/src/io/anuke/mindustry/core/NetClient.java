@@ -12,19 +12,19 @@ import io.anuke.annotations.Annotations.Variant;
 import io.anuke.mindustry.Vars;
 import io.anuke.mindustry.core.GameState.State;
 import io.anuke.mindustry.entities.Player;
-import io.anuke.mindustry.entities.TileEntity;
 import io.anuke.mindustry.entities.traits.BuilderTrait.BuildRequest;
 import io.anuke.mindustry.entities.traits.SyncTrait;
 import io.anuke.mindustry.entities.traits.TypeTrait;
+import io.anuke.mindustry.game.Version;
 import io.anuke.mindustry.gen.Call;
 import io.anuke.mindustry.gen.RemoteReadClient;
 import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.net.Net.SendMode;
 import io.anuke.mindustry.net.NetworkIO;
 import io.anuke.mindustry.net.Packets.*;
-import io.anuke.mindustry.net.TraceInfo;
 import io.anuke.mindustry.net.ValidateException;
-import io.anuke.mindustry.world.modules.InventoryModule;
+import io.anuke.mindustry.world.Tile;
+import io.anuke.mindustry.world.modules.ItemModule;
 import io.anuke.ucore.core.Core;
 import io.anuke.ucore.core.Settings;
 import io.anuke.ucore.core.Timers;
@@ -36,6 +36,7 @@ import io.anuke.ucore.util.Log;
 import io.anuke.ucore.util.Mathf;
 import io.anuke.ucore.util.Timer;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Random;
@@ -46,7 +47,7 @@ import static io.anuke.mindustry.Vars.*;
 public class NetClient extends Module{
     private final static float dataTimeout = 60 * 18;
     private final static float playerSyncTime = 2;
-    private final static float viewScale = 1.75f;
+    public final static float viewScale = 2f;
 
     private Timer timer = new Timer(5);
     /**Whether the client is currently connecting.*/
@@ -76,7 +77,7 @@ public class NetClient extends Module{
 
     public NetClient(){
 
-        Net.handleClient(Connect.class, packet -> {
+        net.handleClient(Connect.class, packet -> {
             Player player = players[0];
 
             player.isAdmin = false;
@@ -90,12 +91,13 @@ public class NetClient extends Module{
                 ui.loadfrag.hide();
                 connecting = false;
                 quiet = true;
-                Net.disconnect();
+                net.disconnect();
             });
 
             ConnectPacket c = new ConnectPacket();
             c.name = player.name;
             c.mobile = mobile;
+            c.versionType = Version.type;
             c.color = Color.rgba8888(player.color);
             c.usid = getUsid(packet.addressTCP);
             c.uuid = Platform.instance.getUUID();
@@ -107,10 +109,10 @@ public class NetClient extends Module{
                 return;
             }
 
-            Net.send(c, SendMode.reliable);
+            net.send(c, SendMode.reliable);
         });
 
-        Net.handleClient(Disconnect.class, packet -> {
+        net.handleClient(Disconnect.class, packet -> {
             if(quiet) return;
 
             Timers.runTask(3f, ui.loadfrag::hide);
@@ -123,14 +125,14 @@ public class NetClient extends Module{
             Platform.instance.updateRPC();
         });
 
-        Net.handleClient(WorldStream.class, data -> {
-            Log.info("Recieved world data: {0} bytes.", data.stream.available());
-            NetworkIO.loadWorld(new InflaterInputStream(data.stream));
+        net.handleClient(WorldStream.class, data -> {
+            Log.info("Recieved world data: {0} bytes.", data.bytes.length);
+            NetworkIO.loadWorld(new InflaterInputStream(new ByteArrayInputStream(data.bytes)));
 
             finishConnecting();
         });
 
-        Net.handleClient(InvokePacket.class, packet -> {
+        net.handleClient(InvokePacket.class, packet -> {
             packet.writeBuffer.position(0);
             RemoteReadClient.readPacket(packet.writeBuffer, packet.type);
         });
@@ -166,14 +168,17 @@ public class NetClient extends Module{
     public static void onKick(KickReason reason){
         netClient.disconnectQuietly();
         state.set(State.menu);
-        if(!reason.quiet){
-            if(reason.extraText() != null){
-                ui.showText(reason.toString(), reason.extraText());
-            }else{
-                ui.showText("$text.disconnect", reason.toString());
+
+        threads.runGraphics(() -> {
+            if(!reason.quiet){
+                if(reason.extraText() != null){
+                    ui.showText(reason.toString(), reason.extraText());
+                }else{
+                    ui.showText("$text.disconnect", reason.toString());
+                }
             }
-        }
-        ui.loadfrag.hide();
+            ui.loadfrag.hide();
+        });
     }
 
     @Remote(variants = Variant.both)
@@ -187,7 +192,7 @@ public class NetClient extends Module{
         netClient.removed.clear();
 
         ui.chatfrag.clearMessages();
-        Net.setClientLoaded(false);
+        net.setClientLoaded(false);
 
         threads.runGraphics(() -> {
             ui.loadfrag.show("$text.connecting.data");
@@ -196,7 +201,7 @@ public class NetClient extends Module{
                 ui.loadfrag.hide();
                 netClient.connecting = false;
                 netClient.quiet = true;
-                Net.disconnect();
+                net.disconnect();
             });
         });
     }
@@ -205,12 +210,6 @@ public class NetClient extends Module{
     public static void onPositionSet(float x, float y){
         players[0].x = x;
         players[0].y = y;
-    }
-
-    @Remote(variants = Variant.one)
-    public static void onTraceInfo(TraceInfo info){
-        Player player = playerGroup.getByID(info.playerid);
-        ui.traces.show(player, info);
     }
 
     @Remote
@@ -263,7 +262,7 @@ public class NetClient extends Module{
             if(NetServer.debugSnapshots)
                 Log.info("Finished recieving snapshot ID {0} length {1}", snapshotID, chunk.length);
 
-            byte[] result = Net.decompressSnapshot(snapshot, uncompressedLength);
+            byte[] result = net.decompressSnapshot(snapshot, uncompressedLength);
             int length = result.length;
 
             netClient.lastSnapshotBaseID = snapshotID;
@@ -288,15 +287,16 @@ public class NetClient extends Module{
         //read wave info
         state.wavetime = input.readFloat();
         state.wave = input.readInt();
+        state.enemies = input.readInt();
 
         byte cores = input.readByte();
         for(int i = 0; i < cores; i++){
             int pos = input.readInt();
-            TileEntity entity = world.tile(pos).entity;
-            if(entity != null){
-                entity.items.read(input);
+            Tile tile = world.tile(pos);
+            if(tile != null && tile.entity != null){
+                tile.entity.items.read(input);
             }else{
-                new InventoryModule().read(input);
+                new ItemModule().read(input);
             }
         }
 
@@ -341,12 +341,12 @@ public class NetClient extends Module{
 
     @Override
     public void update(){
-        if(!Net.client()) return;
+        if(!net.client()) return;
 
         if(!state.is(State.menu)){
             if(!connecting) sync();
         }else if(!connecting){
-            Net.disconnect();
+            net.disconnect();
         }else{ //...must be connecting
             timeoutTime += Timers.delta();
             if(timeoutTime > dataTimeout){
@@ -354,7 +354,7 @@ public class NetClient extends Module{
                 ui.loadfrag.hide();
                 quiet = true;
                 ui.showError("$text.disconnect.data");
-                Net.disconnect();
+                net.disconnect();
                 timeoutTime = 0f;
             }
         }
@@ -369,13 +369,13 @@ public class NetClient extends Module{
         connecting = false;
         ui.loadfrag.hide();
         ui.join.hide();
-        Net.setClientLoaded(true);
+        net.setClientLoaded(true);
         Gdx.app.postRunnable(Call::connectConfirm);
         Timers.runTask(40f, Platform.instance::updateRPC);
     }
 
     private void reset(){
-        Net.setClientLoaded(false);
+        net.setClientLoaded(false);
         removed.clear();
         timeoutTime = 0f;
         connecting = true;
@@ -395,7 +395,7 @@ public class NetClient extends Module{
 
     public void disconnectQuietly(){
         quiet = true;
-        Net.disconnect();
+        net.disconnect();
     }
 
     /**When set, any disconnects will be ignored and no dialogs will be shown.*/
@@ -403,11 +403,11 @@ public class NetClient extends Module{
         quiet = true;
     }
 
-    public synchronized void addRemovedEntity(int id){
+    public void addRemovedEntity(int id){
         removed.add(id);
     }
 
-    public synchronized boolean isEntityUsed(int id){
+    public boolean isEntityUsed(int id){
         return removed.contains(id);
     }
 
@@ -415,7 +415,10 @@ public class NetClient extends Module{
 
         if(timer.get(0, playerSyncTime)){
             Player player = players[0];
-            BuildRequest[] requests = new BuildRequest[player.getPlaceQueue().size];
+
+            BuildRequest[] requests;
+
+            requests = new BuildRequest[player.getPlaceQueue().size];
             for(int i = 0; i < requests.length; i++){
                 requests[i] = player.getPlaceQueue().get(i);
             }
@@ -427,10 +430,6 @@ public class NetClient extends Module{
                 player.isBoosting, player.isShooting, requests,
                 Core.camera.position.x, Core.camera.position.y,
                 Core.camera.viewportWidth * Core.camera.zoom * viewScale, Core.camera.viewportHeight * Core.camera.zoom * viewScale);
-        }
-
-        if(timer.get(1, 60)){
-            Net.updatePing();
         }
     }
 

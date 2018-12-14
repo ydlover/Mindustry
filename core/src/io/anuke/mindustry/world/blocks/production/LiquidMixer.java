@@ -8,6 +8,7 @@ import io.anuke.mindustry.world.blocks.LiquidBlock;
 import io.anuke.mindustry.world.consumers.ConsumeLiquid;
 import io.anuke.mindustry.world.meta.BlockBar;
 import io.anuke.mindustry.world.meta.BlockStat;
+import io.anuke.mindustry.world.meta.StatUnit;
 import io.anuke.mindustry.world.modules.LiquidModule;
 import io.anuke.ucore.graphics.Draw;
 
@@ -20,6 +21,7 @@ public class LiquidMixer extends LiquidBlock{
         hasItems = true;
         rotate = false;
         solid = true;
+        singleLiquid = false;
         outputsLiquid = true;
     }
 
@@ -35,6 +37,7 @@ public class LiquidMixer extends LiquidBlock{
         super.setStats();
 
         stats.add(BlockStat.liquidOutput, outputLiquid);
+        stats.add(BlockStat.liquidOutputSpeed, 60f * consumes.get(ConsumeLiquid.class).used(), StatUnit.liquidSecond);
     }
 
     @Override

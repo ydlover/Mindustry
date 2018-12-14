@@ -5,14 +5,8 @@ import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.files.FileHandle;
 import io.anuke.mindustry.core.Platform;
-import io.anuke.mindustry.core.ThreadHandler;
 import io.anuke.mindustry.game.Saves.SaveSlot;
 import io.anuke.mindustry.io.SaveIO;
-import io.anuke.mindustry.net.DefaultThreadImpl;
-import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.ClientImpl;
-import io.anuke.mindustry.net.ServerImpl;
-import io.anuke.ucore.scene.ui.TextField;
 import io.anuke.ucore.scene.ui.layout.Unit;
 import io.anuke.ucore.util.Bundles;
 import io.anuke.ucore.util.Strings;
@@ -21,12 +15,7 @@ import org.robovm.apple.foundation.NSURL;
 import org.robovm.apple.uikit.*;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.NumberFormat;
-import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.Date;
-import java.util.Locale;
 
 import static io.anuke.mindustry.Vars.*;
 import static org.robovm.apple.foundation.NSPathUtilities.getDocumentsDirectory;
@@ -36,47 +25,12 @@ public class IOSLauncher extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        Net.setClientProvider(new ClientImpl());
-        Net.setServerProvider(new ServerImpl());
-
-        Unit.dp.addition -= 0.2f;
 
         if(UIDevice.getCurrentDevice().getUserInterfaceIdiom() == UIUserInterfaceIdiom.Pad){
             Unit.dp.addition = 0.5f;
         }
 
         Platform.instance = new Platform() {
-            DateFormat format = SimpleDateFormat.getDateTimeInstance();
-
-            @Override
-            public String format(Date date) {
-                return format.format(date);
-            }
-
-            @Override
-            public String format(int number) {
-                return NumberFormat.getIntegerInstance().format(number);
-            }
-
-            @Override
-            public void addDialog(TextField field) {
-                TextFieldDialogListener.add(field, 16);
-            }
-
-            @Override
-            public void addDialog(TextField field, int maxLength) {
-                TextFieldDialogListener.add(field, maxLength);
-            }
-
-            @Override
-            public String getLocaleName(Locale locale) {
-                return locale.getDisplayName(locale);
-            }
-
-            @Override
-            public ThreadHandler.ThreadProvider getThreadProvider() {
-                return new DefaultThreadImpl();
-            }
 
             @Override
             public void shareFile(FileHandle file){

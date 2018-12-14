@@ -14,11 +14,7 @@ public class ColorMapper implements ContentList{
     private static ObjectIntMap<Block> colorMap = new ObjectIntMap<>();
     private static ThreadLocal<Color> tmpColors = new ThreadLocal<>();
 
-    public static Block getByColor(int color){
-        return blockMap.get(color);
-    }
-
-    public static int getBlockColor(Block block){
+    private static int getBlockColor(Block block){
         return colorMap.get(block, 0);
     }
 
@@ -35,7 +31,7 @@ public class ColorMapper implements ContentList{
             float maxMult = 1f/Math.max(Math.max(tmpColor.r, tmpColor.g), tmpColor.b) ;
             float mul = Math.min(0.7f + elevation / 5f, maxMult);
             if((cliffs & ((1 << 6))) != 0){
-                mul -= 0.5f;
+                mul -= 0.35f;
             }
             tmpColor.mul(mul, mul, mul, 1f);
             color = Color.rgba8888(tmpColor);

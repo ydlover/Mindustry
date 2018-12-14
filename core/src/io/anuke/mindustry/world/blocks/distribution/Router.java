@@ -32,6 +32,11 @@ public class Router extends Block{
     @Override
     public void update(Tile tile){
         SplitterEntity entity = tile.entity();
+
+        if(entity.lastItem == null && entity.items.total() > 0){
+            entity.items.clear();
+        }
+
         if(entity.lastItem != null){
             entity.time += 1f/speed * Timers.delta();
             Tile target = getTileTarget(tile, entity.lastItem, entity.lastInput, false);
@@ -49,7 +54,7 @@ public class Router extends Block{
     public boolean acceptItem(Item item, Tile tile, Tile source){
         SplitterEntity entity = tile.entity();
 
-        return tile.getTeamID() == source.getTeamID() && entity.lastItem == null;
+        return tile.getTeamID() == source.getTeamID() && entity.lastItem == null && entity.items.total() == 0;
     }
 
     @Override

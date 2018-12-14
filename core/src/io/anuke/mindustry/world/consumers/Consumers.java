@@ -52,7 +52,7 @@ public class Consumers{
         return i;
     }
 
-    public ConsumeItems items(ItemStack[] items){
+    public ConsumeItems items(ItemStack... items){
         ConsumeItems i = new ConsumeItems(items);
         add(i);
         return i;
@@ -87,6 +87,7 @@ public class Consumers{
         return map.containsKey(type);
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends Consume> T get(Class<T> type){
         if(!map.containsKey(type)){
             throw new IllegalArgumentException("Block does not contain consumer of type '" + type + "'!");

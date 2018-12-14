@@ -57,6 +57,8 @@ public class DesktopInput extends InputHandler{
                         region.getRegionWidth() * selectScale, region.getRegionHeight() * selectScale, block.rotate ? rotation * 90 : 0);
             }
         }else{
+            Draw.color(Palette.removeBack);
+            Lines.square(x * tilesize + block.offset(), y * tilesize + block.offset() - 1, block.size * tilesize / 2f);
             Draw.color(Palette.remove);
             Lines.square(x * tilesize + block.offset(), y * tilesize + block.offset(), block.size * tilesize / 2f);
         }
@@ -94,18 +96,22 @@ public class DesktopInput extends InputHandler{
             NormalizeDrawResult result = PlaceUtils.normalizeDrawArea(Blocks.air, selectX, selectY, cursorX, cursorY, false, maxLength, 1f);
             NormalizeResult dresult = PlaceUtils.normalizeArea(selectX, selectY, cursorX, cursorY, rotation, false, maxLength);
 
-            Draw.color(Palette.remove);
-
             for(int x = dresult.x; x <= dresult.x2; x++){
                 for(int y = dresult.y; y <= dresult.y2; y++){
                     Tile tile = world.tile(x, y);
                     if(tile == null || !validBreak(tile.x, tile.y)) continue;
                     tile = tile.target();
 
-                    Lines.poly(tile.drawx(), tile.drawy(), 4, tile.block().size * tilesize / 2f, 45 + 15);
+                    Draw.color(Palette.removeBack);
+                    Lines.square(tile.drawx(), tile.drawy()-1, tile.block().size * tilesize / 2f - 1);
+                    Draw.color(Palette.remove);
+                    Lines.square(tile.drawx(), tile.drawy(), tile.block().size * tilesize / 2f - 1);
                 }
             }
 
+            Draw.color(Palette.removeBack);
+            Lines.rect(result.x, result.y - 1, result.x2 - result.x, result.y2 - result.y);
+            Draw.color(Palette.remove);
             Lines.rect(result.x, result.y, result.x2 - result.x, result.y2 - result.y);
         }else if(isPlacing()){
             if(recipe.result.rotate){
@@ -122,7 +128,7 @@ public class DesktopInput extends InputHandler{
 
     @Override
     public void update(){
-        if(Net.active() && Inputs.keyTap("player_list")){
+        if(net.active() && Inputs.keyTap("player_list")){
             ui.listfrag.toggle();
         }
 
@@ -144,12 +150,6 @@ public class DesktopInput extends InputHandler{
         if(player.isDead()) return;
 
         pollInput();
-
-        if(recipe != null && !Settings.getBool("desktop-place-help-2", false)){
-            ui.showInfo("$text.construction.desktop");
-            Settings.putBool("desktop-place-help-2", true);
-            Settings.save();
-        }
 
         //deselect if not placing
         if(!isPlacing() && mode == placing){
@@ -215,13 +215,14 @@ public class DesktopInput extends InputHandler{
             }else if(selected != null){
                 //only begin shooting if there's no cursor event
                 if (!tileTapped(selected) && !tryTapPlayer(Graphics.mouseWorld().x, Graphics.mouseWorld().y) && player.getPlaceQueue().size == 0 && !droppingItem &&
-                        !tryBeginMine(selected) && player.getMineTile() == null) {
+                        !tryBeginMine(selected) && player.getMineTile() == null && !ui.chatfrag.chatOpen()) {
                     player.isShooting = true;
                 }
-            }else{ //if it's out of bounds, shooting is just fine
+            }else if(!ui.chatfrag.chatOpen()){ //if it's out of bounds, shooting is just fine
                 player.isShooting = true;
             }
-        }else if(Inputs.keyTap(section, "deselect") && (recipe != null || mode != none || player.isBuilding())){
+        }else if(Inputs.keyTap(section, "deselect") && (recipe != null || mode != none || player.isBuilding()) &&
+        !(player.getCurrentRequest() != null && player.getCurrentRequest().breaking && KeyBinds.get(section, "deselect") == KeyBinds.get(section, "break"))){
             if(recipe == null){
                 player.clearBuilding();
             }
@@ -229,9 +230,10 @@ public class DesktopInput extends InputHandler{
             recipe = null;
             mode = none;
         }else if(Inputs.keyTap(section, "break") && !ui.hasMouse()){
-            selectX = cursorX;
-            selectY = cursorY;
+            //is recalculated because setting the mode to breaking removes potential multiblock cursor offset
             mode = breaking;
+            selectX = tileX(Gdx.input.getX());
+            selectY = tileY(Gdx.input.getY());
         }
 
 
@@ -267,6 +269,11 @@ public class DesktopInput extends InputHandler{
             mode = none;
         }
         
+    }
+
+    @Override
+    public boolean selectedBlock(){
+        return isPlacing() && mode != breaking;
     }
 
     @Override

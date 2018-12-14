@@ -41,7 +41,7 @@ public class Pump extends LiquidBlock{
     @Override
     public void setStats(){
         super.setStats();
-        stats.add(BlockStat.liquidOutput, 60f * pumpAmount, StatUnit.liquidSecond);
+        stats.add(BlockStat.liquidOutputSpeed, 60f * pumpAmount, StatUnit.liquidSecond);
     }
 
     @Override
@@ -64,14 +64,11 @@ public class Pump extends LiquidBlock{
         if(isMultiblock()){
             Liquid last = null;
             for(Tile other : tile.getLinkedTilesAs(this, drawTiles)){
-                //can't place pump on block with multiple liquids
-                if(last != null && other.floor().liquidDrop != last){
+                if(other.floor().liquidDrop == null)
+                    continue;
+                if(other.floor().liquidDrop != last && last != null)
                     return false;
-                }
-
-                if(isValid(other)){
-                    last = other.floor().liquidDrop;
-                }
+                last = other.floor().liquidDrop;
             }
             return last != null;
         }else{

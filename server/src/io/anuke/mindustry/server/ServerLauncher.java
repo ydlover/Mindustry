@@ -4,11 +4,8 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.headless.HeadlessApplication;
 import com.badlogic.gdx.backends.headless.HeadlessApplicationConfiguration;
-import io.anuke.mindustry.net.Net;
-import io.anuke.mindustry.net.ClientImpl;
-import io.anuke.mindustry.net.ServerImpl;
+import io.anuke.ucore.core.Settings;
 import io.anuke.ucore.util.EmptyLogger;
-import io.anuke.ucore.util.OS;
 
 public class ServerLauncher extends HeadlessApplication{
 
@@ -22,11 +19,8 @@ public class ServerLauncher extends HeadlessApplication{
     public static void main(String[] args){
         try{
 
-            Net.setClientProvider(new ClientImpl());
-            Net.setServerProvider(new ServerImpl());
-
             HeadlessApplicationConfiguration config = new HeadlessApplicationConfiguration();
-            config.preferencesDirectory = OS.getAppDataDirectoryString("Mindustry");
+            Settings.setPrefHandler((appName) -> Gdx.files.local("config"));
 
             new ServerLauncher(new MindustryServer(args), config);
         }catch(Throwable t){

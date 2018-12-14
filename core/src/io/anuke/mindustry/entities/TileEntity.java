@@ -17,7 +17,7 @@ import io.anuke.mindustry.world.Tile;
 import io.anuke.mindustry.world.blocks.defense.Wall;
 import io.anuke.mindustry.world.consumers.Consume;
 import io.anuke.mindustry.world.modules.ConsumeModule;
-import io.anuke.mindustry.world.modules.InventoryModule;
+import io.anuke.mindustry.world.modules.ItemModule;
 import io.anuke.mindustry.world.modules.LiquidModule;
 import io.anuke.mindustry.world.modules.PowerModule;
 import io.anuke.ucore.core.Effects;
@@ -28,8 +28,8 @@ import io.anuke.ucore.entities.trait.HealthTrait;
 import io.anuke.ucore.util.Mathf;
 import io.anuke.ucore.util.Timer;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import static io.anuke.mindustry.Vars.tileGroup;
@@ -47,7 +47,7 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
     public float timeScale = 1f, timeScaleDuration;
 
     public PowerModule power;
-    public InventoryModule items;
+    public ItemModule items;
     public LiquidModule liquids;
     public ConsumeModule cons;
 
@@ -120,11 +120,13 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
         return dead || tile.entity != this;
     }
 
-    public void write(DataOutputStream stream) throws IOException{
-    }
+    public void write(DataOutput stream) throws IOException{}
 
-    public void read(DataInputStream stream) throws IOException{
-    }
+    public void writeConfig(DataOutput stream) throws IOException{}
+
+    public void read(DataInput stream) throws IOException{}
+
+    public void readConfig(DataInput stream) throws IOException{}
 
     public boolean collide(Bullet other){
         return true;
@@ -141,11 +143,19 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
     public void damage(float damage){
         if(dead) return;
 
+        float preHealth = health;
+
         Call.onTileDamage(tile, health - tile.block().handleDamage(tile, damage));
 
         if(health <= 0){
             Call.onTileDestroyed(tile);
+        }else if(preHealth >= maxHealth() - 0.00001f && health < maxHealth()){ //when just damaged
+            world.indexer.notifyTileDamaged(this);
         }
+    }
+
+    public boolean damaged(){
+        return health < maxHealth() - 0.00001f;
     }
 
     public Tile getTile(){
@@ -157,9 +167,7 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
     }
 
     public void removeFromProximity(){
-        if(power != null){
-            tile.block().powerGraphRemoved(tile);
-        }
+        tile.block().onProximityRemoved(tile);
 
         GridPoint2[] nearby = Edges.getEdges(tile.block().size);
         for(GridPoint2 point : nearby){
@@ -202,7 +210,7 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
             proximity.add(tile);
         }
 
-        if(tile.block().hasPower) tile.block().updatePowerGraph(tile);
+        tile.block().onProximityAdded(tile);
         tile.block().onProximityUpdate(tile);
     }
 
@@ -255,27 +263,25 @@ public class TileEntity extends BaseEntity implements TargetTrait, HealthTrait{
 
     @Override
     public void update(){
-        synchronized(Tile.tileSetLock){
-            //TODO better smoke effect, this one is awful
-            if(health != 0 && health < tile.block().health && !(tile.block() instanceof Wall) &&
-                    Mathf.chance(0.009f * Timers.delta() * (1f - health / tile.block().health))){
+        //TODO better smoke effect, this one is awful
+        if(health != 0 && health < tile.block().health && !(tile.block() instanceof Wall) &&
+                Mathf.chance(0.009f * Timers.delta() * (1f - health / tile.block().health))){
 
-                Effects.effect(Fx.smoke, x + Mathf.range(4), y + Mathf.range(4));
-            }
+            Effects.effect(Fx.smoke, x + Mathf.range(4), y + Mathf.range(4));
+        }
 
-            timeScaleDuration -= Timers.delta();
-            if(timeScaleDuration <= 0f || !tile.block().canOverdrive){
-                timeScale = 1f;
-            }
+        timeScaleDuration -= Timers.delta();
+        if(timeScaleDuration <= 0f || !tile.block().canOverdrive){
+            timeScale = 1f;
+        }
 
-            if(health <= 0){
-                onDeath();
-            }
-            Block previous = tile.block();
-            tile.block().update(tile);
-            if(tile.block() == previous && cons != null){
-                cons.update(this);
-            }
+        if(health <= 0){
+            onDeath();
+        }
+        Block previous = tile.block();
+        tile.block().update(tile);
+        if(tile.block() == previous && cons != null){
+            cons.update(this);
         }
     }
 

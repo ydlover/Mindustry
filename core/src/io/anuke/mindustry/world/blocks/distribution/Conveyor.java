@@ -16,8 +16,8 @@ import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.graphics.Draw;
 import io.anuke.ucore.util.*;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import static io.anuke.mindustry.Vars.*;
@@ -35,7 +35,6 @@ public class Conveyor extends Block{
     private TextureRegion[][] regions = new TextureRegion[7][4];
 
     protected float speed = 0f;
-    protected float carryCapacity = 8f;
 
     protected Conveyor(String name){
         super(name);
@@ -159,7 +158,7 @@ public class Conveyor extends Block{
                 if(pos.item == null) continue;
 
                 tr1.trns(rotation * 90, tilesize, 0);
-                tr2.trns(rotation * 90, -tilesize / 2, pos.x * tilesize / 2);
+                tr2.trns(rotation * 90, -tilesize / 2f, pos.x * tilesize / 2f);
 
                 Draw.rect(pos.item.region,
                         (int) (tile.x * tilesize + tr1.x * pos.y + tr2.x),
@@ -198,7 +197,7 @@ public class Conveyor extends Block{
     }
 
     @Override
-    public synchronized void update(Tile tile){
+    public void update(Tile tile){
 
         ConveyorEntity entity = tile.entity();
         entity.minitem = 1f;
@@ -274,7 +273,7 @@ public class Conveyor extends Block{
     }
 
     @Override
-    public synchronized int removeStack(Tile tile, Item item, int amount){
+    public int removeStack(Tile tile, Item item, int amount){
         ConveyorEntity entity = tile.entity();
         entity.noSleep();
         int removed = 0;
@@ -300,13 +299,13 @@ public class Conveyor extends Block{
     }
 
     @Override
-    public synchronized int acceptStack(Item item, int amount, Tile tile, Unit source){
+    public int acceptStack(Item item, int amount, Tile tile, Unit source){
         ConveyorEntity entity = tile.entity();
         return Math.min((int)(entity.minitem / itemSpace), amount);
     }
 
     @Override
-    public synchronized void handleStack(Item item, int amount, Tile tile, Unit source){
+    public void handleStack(Item item, int amount, Tile tile, Unit source){
         ConveyorEntity entity = tile.entity();
 
         for(int i = amount - 1; i >= 0; i--){
@@ -359,9 +358,9 @@ public class Conveyor extends Block{
     public Array<Object> getDebugInfo(Tile tile){
         ConveyorEntity entity = tile.entity();
         Array<Object> arr = super.getDebugInfo(tile);
-        arr.addAll(Array.with(
-                "clogHeat", entity.clogHeat,
-                "sleeping", entity.isSleeping()
+        arr.addAll(Array.<Object>with(
+            "clogHeat", entity.clogHeat,
+            "sleeping", entity.isSleeping()
         ));
         return arr;
     }
@@ -384,7 +383,7 @@ public class Conveyor extends Block{
         float clogHeat = 0f;
 
         @Override
-        public void write(DataOutputStream stream) throws IOException{
+        public void write(DataOutput stream) throws IOException{
             stream.writeInt(convey.size);
 
             for(int i = 0; i < convey.size; i++){
@@ -393,10 +392,10 @@ public class Conveyor extends Block{
         }
 
         @Override
-        public void read(DataInputStream stream) throws IOException{
+        public void read(DataInput stream) throws IOException{
             convey.clear();
             int amount = stream.readInt();
-            convey.ensureCapacity(amount);
+            convey.ensureCapacity(Math.min(amount, 10));
 
             for(int i = 0; i < amount; i++){
                 convey.add(ItemPos.toLong(stream.readInt()));

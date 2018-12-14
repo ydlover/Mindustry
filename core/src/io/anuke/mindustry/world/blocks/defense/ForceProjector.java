@@ -7,9 +7,11 @@ import io.anuke.mindustry.content.fx.BulletFx;
 import io.anuke.mindustry.entities.TileEntity;
 import io.anuke.mindustry.entities.traits.AbsorbTrait;
 import io.anuke.mindustry.graphics.Palette;
+import io.anuke.mindustry.world.BarType;
 import io.anuke.mindustry.world.Block;
 import io.anuke.mindustry.world.Tile;
 import io.anuke.mindustry.world.consumers.ConsumeLiquidFilter;
+import io.anuke.mindustry.world.meta.BlockBar;
 import io.anuke.mindustry.world.meta.BlockStat;
 import io.anuke.mindustry.world.meta.StatUnit;
 import io.anuke.ucore.core.Effects;
@@ -23,17 +25,17 @@ import io.anuke.ucore.graphics.Draw;
 import io.anuke.ucore.graphics.Fill;
 import io.anuke.ucore.util.Mathf;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 import static io.anuke.mindustry.Vars.*;
 
 public class ForceProjector extends Block {
     protected int timerUse = timers ++;
-    protected float phaseUseTime = 250f;
+    protected float phaseUseTime = 350f;
 
-    protected float phaseRadiusBoost = 60f;
+    protected float phaseRadiusBoost = 80f;
     protected float radius = 100f;
     protected float breakage = 550f;
     protected float cooldownNormal = 1.75f;
@@ -69,6 +71,13 @@ public class ForceProjector extends Block {
     }
 
     @Override
+    public void setBars(){
+        super.setBars();
+
+        bars.add(new BlockBar(BarType.heat, true, tile -> tile.<ForceEntity>entity().buildup / breakage));
+    }
+
+    @Override
     public void update(Tile tile){
         ForceEntity entity = tile.entity();
         boolean cheat = tile.isEnemyCheat();
@@ -80,7 +89,7 @@ public class ForceProjector extends Block {
 
         entity.phaseHeat = Mathf.lerpDelta(entity.phaseHeat, (float)entity.items.get(consumes.item()) / itemCapacity, 0.1f);
 
-        if(!entity.broken && entity.timer.get(timerUse, phaseUseTime) && entity.items.total() > 0){
+        if(entity.cons.valid() && !entity.broken && entity.timer.get(timerUse, phaseUseTime) && entity.items.total() > 0){
             entity.items.remove(consumes.item(), 1);
         }
 
@@ -91,7 +100,7 @@ public class ForceProjector extends Block {
         }
 
         if(!entity.cons.valid() && !cheat){
-            entity.warmup = Mathf.lerpDelta(entity.warmup, 0f, 0.1f);
+            entity.warmup = Mathf.lerpDelta(entity.warmup, 0f, 0.15f);
             if(entity.warmup <= 0.09f){
                 entity.broken = true;
             }
@@ -136,6 +145,10 @@ public class ForceProjector extends Block {
                     float hit = trait.getShieldDamage()*powerDamage;
                     entity.hit = 1f;
                     entity.power.amount -= Math.min(hit, entity.power.amount);
+
+                    if(entity.power.amount <= 0.0001f){
+                        entity.buildup += trait.getShieldDamage() * entity.warmup*2f;
+                    }
                     entity.buildup += trait.getShieldDamage() * entity.warmup;
                 }
             });
@@ -184,7 +197,7 @@ public class ForceProjector extends Block {
         float phaseHeat;
 
         @Override
-        public void write(DataOutputStream stream) throws IOException{
+        public void write(DataOutput stream) throws IOException{
             stream.writeBoolean(broken);
             stream.writeFloat(buildup);
             stream.writeFloat(radscl);
@@ -193,7 +206,7 @@ public class ForceProjector extends Block {
         }
 
         @Override
-        public void read(DataInputStream stream) throws IOException{
+        public void read(DataInput stream) throws IOException{
             broken = stream.readBoolean();
             buildup = stream.readFloat();
             radscl = stream.readFloat();

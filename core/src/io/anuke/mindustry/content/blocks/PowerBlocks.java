@@ -4,12 +4,11 @@ import io.anuke.mindustry.content.Liquids;
 import io.anuke.mindustry.content.fx.BlockFx;
 import io.anuke.mindustry.game.ContentList;
 import io.anuke.mindustry.world.Block;
-import io.anuke.mindustry.world.blocks.distribution.WarpGate;
 import io.anuke.mindustry.world.blocks.power.*;
 
 public class PowerBlocks extends BlockList implements ContentList{
     public static Block combustionGenerator, thermalGenerator, turbineGenerator, rtgGenerator, solarPanel, largeSolarPanel,
-            thoriumReactor, fusionReactor, battery, batteryLarge, powerNode, powerNodeLarge, warpGate;
+            thoriumReactor, fusionReactor, battery, batteryLarge, powerNode, powerNodeLarge;
 
     @Override
     public void load(){
@@ -20,9 +19,9 @@ public class PowerBlocks extends BlockList implements ContentList{
         }};
 
         thermalGenerator = new LiquidHeatGenerator("thermal-generator"){{
-            maxLiquidGenerate = 0.5f;
+            maxLiquidGenerate = 2f;
             powerCapacity = 40f;
-            powerPerLiquid = 1f;
+            powerPerLiquid = 0.35f;
             generateEffect = BlockFx.redgeneratespark;
             size = 2;
         }};
@@ -74,19 +73,16 @@ public class PowerBlocks extends BlockList implements ContentList{
 
         powerNode = new PowerNode("power-node"){{
             shadow = "shadow-round-1";
-            powerSpeed = 0.5f;
             maxNodes = 4;
+            laserRange = 6;
         }};
 
         powerNodeLarge = new PowerNode("power-node-large"){{
             size = 2;
-            powerSpeed = 1.5f;
             maxNodes = 6;
-            laserRange = 7.5f;
+            laserRange = 9.5f;
             shadow = "shadow-round-2";
         }};
-
-        warpGate = new WarpGate("warp-gate");
 
     }
 }

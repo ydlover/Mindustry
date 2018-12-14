@@ -16,14 +16,17 @@ import io.anuke.mindustry.core.GameState.State;
 import io.anuke.mindustry.entities.Player;
 import io.anuke.mindustry.entities.traits.BuilderTrait.BuildRequest;
 import io.anuke.mindustry.entities.traits.SyncTrait;
+import io.anuke.mindustry.game.EventType.WorldLoadEvent;
 import io.anuke.mindustry.game.Team;
 import io.anuke.mindustry.game.Version;
 import io.anuke.mindustry.gen.Call;
 import io.anuke.mindustry.gen.RemoteReadServer;
 import io.anuke.mindustry.net.*;
 import io.anuke.mindustry.net.Administration.PlayerInfo;
+import io.anuke.mindustry.net.Net.SendMode;
 import io.anuke.mindustry.net.Packets.*;
 import io.anuke.mindustry.world.Tile;
+import io.anuke.ucore.core.Events;
 import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.entities.Entities;
 import io.anuke.ucore.entities.EntityGroup;
@@ -58,7 +61,7 @@ public class NetServer extends Module{
     private final static Vector2 vector = new Vector2();
     private final static Rectangle viewport = new Rectangle();
     private final static Array<Entity> returnArray = new Array<>();
-    /**If a play goes away of their server-side coordinates by this distance, they get teleported back.*/
+    /**If a player goes away of their server-side coordinates by this distance, they get teleported back.*/
     private final static float correctDist = 16f;
 
     public final Administration admins = new Administration();
@@ -76,14 +79,19 @@ public class NetServer extends Module{
     private DataOutputStream dataStream = new DataOutputStream(syncStream);
 
     public NetServer(){
+        Events.on(WorldLoadEvent.class, event -> {
+            if(!headless){
+                connections.clear();
+            }
+        });
 
-        Net.handleServer(Connect.class, (id, connect) -> {
+        net.handleServer(Connect.class, (id, connect) -> {
             if(admins.isIPBanned(connect.addressTCP)){
                 kick(id, KickReason.banned);
             }
         });
 
-        Net.handleServer(Disconnect.class, (id, packet) -> {
+        net.handleServer(Disconnect.class, (id, packet) -> {
             Player player = connections.get(id);
             if(player != null){
                 onDisconnect(player);
@@ -91,10 +99,10 @@ public class NetServer extends Module{
             connections.remove(id);
         });
 
-        Net.handleServer(ConnectPacket.class, (id, packet) -> {
+        net.handleServer(ConnectPacket.class, (id, packet) -> {
             String uuid = packet.uuid;
 
-            NetConnection connection = Net.getConnection(id);
+            NetConnection connection = net.getConnection(id);
 
             if(connection == null ||
                     admins.isIPBanned(connection.address)) return;
@@ -106,11 +114,9 @@ public class NetServer extends Module{
 
             connection.hasBegunConnecting = true;
 
-            TraceInfo trace = admins.getTraceByID(uuid);
             PlayerInfo info = admins.getInfo(uuid);
-            trace.uuid = uuid;
-            trace.ip = connection.address;
-            trace.android = packet.mobile;
+
+            connection.mobile = packet.mobile;
 
             if(admins.isIDBanned(uuid)){
                 kick(id, KickReason.banned);
@@ -122,7 +128,7 @@ public class NetServer extends Module{
                 return;
             }
 
-            if(packet.version == -1 && Version.build != -1 && !admins.allowsCustomClients()){
+            if(packet.versionType == null || ((packet.version == -1 || !packet.versionType.equals(Version.type)) && Version.build != -1 && !admins.allowsCustomClients())){
                 kick(id, KickReason.customClient);
                 return;
             }
@@ -150,9 +156,9 @@ public class NetServer extends Module{
                 return;
             }
 
-            Log.info("Recieved connect packet for player '{0}' / UUID {1} / IP {2}", packet.name, uuid, trace.ip);
+            Log.info("Recieved connect packet for player '{0}' / UUID {1} / IP {2}", packet.name, uuid, connection.address);
 
-            String ip = Net.getConnection(id).address;
+            String ip = net.getConnection(id).address;
 
             admins.updatePlayerJoined(uuid, ip, packet.name);
 
@@ -162,12 +168,12 @@ public class NetServer extends Module{
             }
 
             if(packet.version == -1){
-                trace.modclient = true;
+                connection.modclient = true;
             }
 
             Player player = new Player();
             player.isAdmin = admins.isAdmin(uuid, packet.usid);
-            player.con = Net.getConnection(id);
+            player.con = net.getConnection(id);
             player.usid = packet.usid;
             player.name = packet.name;
             player.uuid = uuid;
@@ -207,14 +213,12 @@ public class NetServer extends Module{
 
             connections.put(id, player);
 
-            trace.playerid = player.id;
-
             sendWorldData(player, id);
 
             Platform.instance.updateRPC();
         });
 
-        Net.handleServer(InvokePacket.class, (id, packet) -> {
+        net.handleServer(InvokePacket.class, (id, packet) -> {
             Player player = connections.get(id);
             if(player == null) return;
             RemoteReadServer.readPacket(packet.writeBuffer, packet.type, player);
@@ -265,8 +269,8 @@ public class NetServer extends Module{
         DeflaterOutputStream def = new DeflaterOutputStream(stream);
         NetworkIO.writeWorld(player, def);
         WorldStream data = new WorldStream();
-        data.stream = new ByteArrayInputStream(stream.toByteArray());
-        Net.sendStream(clientID, data);
+        data.bytes = stream.toByteArray();
+        net.sendTo(clientID, data, SendMode.reliable);
 
         Log.info("Packed {0} compressed bytes of world data.", stream.size());
     }
@@ -278,6 +282,7 @@ public class NetServer extends Module{
         }
         player.remove();
         netServer.connections.remove(player.con.id);
+        Log.info("&ly{0} has disconnected.", player.name);
     }
 
     private static float compound(float speed, float drag){
@@ -327,9 +332,9 @@ public class NetServer extends Module{
         player.getPlaceQueue().clear();
         for(BuildRequest req : requests){
             //auto-skip done requests
-            if(req.remove && world.tile(req.x, req.y).block() == Blocks.air){
+            if(req.breaking && world.tile(req.x, req.y).block() == Blocks.air){
                 continue;
-            }else if(!req.remove && world.tile(req.x, req.y).block() == req.recipe.result && (!req.recipe.result.rotate || world.tile(req.x, req.y).getRotation() == req.rotation)){
+            }else if(!req.breaking && world.tile(req.x, req.y).block() == req.recipe.result && (!req.recipe.result.rotate || world.tile(req.x, req.y).getRotation() == req.rotation)){
                 continue;
             }
             player.getPlaceQueue().addLast(req);
@@ -378,7 +383,7 @@ public class NetServer extends Module{
             return;
         }
 
-        if(other == null || (other.isAdmin && other != player)){ //fun fact: this means you can ban yourself
+        if(other == null || ((other.isAdmin && !player.isLocal) && other != player)){
             Log.err("{0} attempted to perform admin action on nonexistant or admin player.", player.name);
             return;
         }
@@ -395,11 +400,11 @@ public class NetServer extends Module{
             netServer.kick(other.con.id, KickReason.kick);
             Log.info("&lc{0} has kicked {1}.", player.name, other.name);
         }else if(action == AdminAction.trace){
-            //TODO
+            //TODO implement
             if(player.con != null){
-                Call.onTraceInfo(player.con.id, netServer.admins.getTraceByID(other.uuid));
+                //Call.onTraceInfo(player.con.id, other.con.trace);
             }else{
-                NetClient.onTraceInfo(netServer.admins.getTraceByID(other.uuid));
+                //NetClient.onTraceInfo(other.con.trace);
             }
             Log.info("&lc{0} has requested trace info of {1}.", player.name, other.name);
         }
@@ -415,47 +420,45 @@ public class NetServer extends Module{
         Log.info("&y{0} has connected.", player.name);
     }
 
-    @Remote(called = Loc.both)
-    public static void onGameOver(Team winner){
-        threads.runGraphics(() -> ui.restart.show(winner));
-        netClient.setQuiet();
-    }
-
     public boolean isWaitingForPlayers(){
-        return state.mode.isPvp && playerGroup.size() < 2;
+        if(state.mode.isPvp){
+            int used = 0;
+            for(Team t : Team.all){
+                if(playerGroup.count(p -> p.getTeam() == t) > 0){
+                    used ++;
+                }
+            }
+            return used < 2;
+        }
+        return false;
     }
 
     public void update(){
-        if(threads.isEnabled() && !threads.isOnThread()) return;
+        net.update();
 
-        if(!headless && !closing && Net.server() && state.is(State.menu)){
+        if(!headless && !closing && net.server() && state.is(State.menu)){
             closing = true;
-            reset();
             threads.runGraphics(() -> ui.loadfrag.show("$text.server.closing"));
             Timers.runTask(5f, () -> {
-                Net.closeServer();
+                net.closeServer();
                 ui.loadfrag.hide();
                 closing = false;
             });
         }
 
-        if(!state.is(State.menu) && Net.server()){
+        if(!state.is(State.menu) && net.server()){
             sync();
         }
     }
 
-    public void reset(){
-        admins.clearTraces();
-    }
-
     public void kickAll(KickReason reason){
-        for(NetConnection con : Net.getConnections()){
+        for(NetConnection con : net.getConnections()){
             kick(con.id, reason);
         }
     }
 
     public void kick(int connection, KickReason reason){
-        NetConnection con = Net.getConnection(connection);
+        NetConnection con = net.getConnection(connection);
         if(con == null){
             Log.err("Cannot kick unknown player!");
             return;
@@ -484,6 +487,7 @@ public class NetServer extends Module{
         //write wave datas
         dataStream.writeFloat(state.wavetime);
         dataStream.writeInt(state.wave);
+        dataStream.writeInt(state.enemies());
 
         ObjectSet<Tile> cores = state.teams.get(player.getTeam()).cores;
 
@@ -491,7 +495,7 @@ public class NetServer extends Module{
 
         //write all core inventory data
         for(Tile tile : cores){
-            dataStream.writeInt(tile.packedPosition());
+            dataStream.writeInt(tile.pos());
             tile.entity.items.write(dataStream);
         }
 
@@ -510,7 +514,7 @@ public class NetServer extends Module{
         //check for syncable groups
         for(EntityGroup<?> group : Entities.getAllGroups()){
             if(group.isEmpty() || !(group.all().get(0) instanceof SyncTrait)) continue;
-            //clipping is done by represntatives
+            //clipping is done by representatives
             SyncTrait represent = (SyncTrait) group.all().get(0);
 
             //make sure mapping is enabled for this group
@@ -597,14 +601,18 @@ public class NetServer extends Module{
     }
 
     void sync(){
+
         try{
 
             //iterate through each player
-            for(Player player : connections.values()){
+            for(int i = 0; i < playerGroup.size(); i ++){
+                Player player = playerGroup.all().get(i);
+                if(player.isLocal) continue;
+
                 NetConnection connection = player.con;
 
-                if(!connection.isConnected()){
-                    //player disconnected, ignore them
+                if(!connection.isConnected() || !connections.containsKey(connection.id)){
+                    //player disconnected, call d/c event
                     onDisconnect(player);
                     return;
                 }
@@ -621,7 +629,7 @@ public class NetServer extends Module{
 
                 byte[] bytes = syncStream.toByteArray();
                 int uncompressed = bytes.length;
-                bytes = Net.compressSnapshot(bytes);
+                bytes = net.compressSnapshot(bytes);
                 int snapid = connection.lastSentSnapshotID ++;
 
                 if(debugSnapshots) Log.info("Sent snapshot: {0} bytes.", bytes.length);

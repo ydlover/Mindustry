@@ -40,24 +40,20 @@ public abstract class BaseBlock extends MappableContent{
         return true;
     }
 
-    /**
-     * Returns the amount of items this block can accept.
-     */
+    /**Returns the amount of items this block can accept.*/
     public int acceptStack(Item item, int amount, Tile tile, Unit source){
         if(acceptItem(item, tile, tile) && hasItems && (source == null || source.getTeam() == tile.getTeam())){
-            return Math.min(getMaximumAccepted(tile, item), amount);
+            return Math.min(getMaximumAccepted(tile, item) - tile.entity.items.get(item), amount);
         }else{
             return 0;
         }
     }
 
     public int getMaximumAccepted(Tile tile, Item item){
-        return itemCapacity - (tile.entity.items.total() - tile.entity.items.get(item));
+        return itemCapacity;
     }
 
-    /**
-     * Remove a stack from this inventory, and return the amount removed.
-     */
+    /**Remove a stack from this inventory, and return the amount removed.*/
     public int removeStack(Tile tile, Item item, int amount){
         tile.entity.noSleep();
         tile.entity.items.remove(item, amount);
@@ -88,12 +84,13 @@ public abstract class BaseBlock extends MappableContent{
     }
 
     public boolean acceptItem(Item item, Tile tile, Tile source){
-        return tile.entity != null && consumes.has(ConsumeItem.class) && consumes.item() == item && tile.entity.items.get(item) < getMaximumAccepted(tile, item);
+        return tile.entity != null && consumes.has(ConsumeItem.class) && consumes.item() == item &&
+            tile.entity.items.get(item) < getMaximumAccepted(tile, item);
     }
 
     public boolean acceptLiquid(Tile tile, Tile source, Liquid liquid, float amount){
         return hasLiquids && tile.entity.liquids.get(liquid) + amount < liquidCapacity &&
-                (!singleLiquid || (tile.entity.liquids.current() == liquid || tile.entity.liquids.get(tile.entity.liquids.current()) < 0.01f)) &&
+                (!singleLiquid || (tile.entity.liquids.current() == liquid || tile.entity.liquids.get(tile.entity.liquids.current()) < 0.2f)) &&
                 (!consumes.has(ConsumeLiquid.class) || consumes.liquid() == liquid);
     }
 

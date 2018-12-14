@@ -12,6 +12,7 @@ import io.anuke.ucore.entities.EntityQuery;
 import io.anuke.ucore.function.Consumer;
 import io.anuke.ucore.function.Predicate;
 import io.anuke.ucore.util.EnumSet;
+import io.anuke.ucore.util.Geometry;
 
 import static io.anuke.mindustry.Vars.*;
 
@@ -20,10 +21,11 @@ import static io.anuke.mindustry.Vars.*;
  */
 public class Units{
     private static Rectangle rect = new Rectangle();
+    private static Rectangle rectGraphics = new Rectangle();
     private static Rectangle hitrect = new Rectangle();
     private static Unit result;
     private static float cdist;
-    private static boolean boolResult;
+    private static boolean boolResult, boolResultGraphics;
 
     /**
      * Validates a target.
@@ -37,31 +39,29 @@ public class Units{
      */
     public static boolean invalidateTarget(TargetTrait target, Team team, float x, float y, float range){
         return target == null || (range != Float.MAX_VALUE && target.distanceTo(x, y) > range) || target.getTeam() == team || !target.isValid();
-
     }
 
-    /**
-     * See {@link #invalidateTarget(TargetTrait, Team, float, float, float)}
-     */
+    /**See {@link #invalidateTarget(TargetTrait, Team, float, float, float)}*/
     public static boolean invalidateTarget(TargetTrait target, Team team, float x, float y){
         return invalidateTarget(target, team, x, y, Float.MAX_VALUE);
     }
 
-    /**
-     * See {@link #invalidateTarget(TargetTrait, Team, float, float, float)}
-     */
+    /**See {@link #invalidateTarget(TargetTrait, Team, float, float, float)}*/
     public static boolean invalidateTarget(TargetTrait target, Unit targeter){
         return invalidateTarget(target, targeter.team, targeter.x, targeter.y, targeter.getWeapon().getAmmo().getRange());
     }
 
-    /**
-     * Returns whether there are any entities on this tile.
-     */
+    /**Returns whether there are any entities on this tile.*/
     public static boolean anyEntities(Tile tile){
         Block type = tile.block();
         rect.setSize(type.size * tilesize, type.size * tilesize);
         rect.setCenter(tile.drawx(), tile.drawy());
 
+        return anyEntities(rect);
+    }
+
+    /**Can be called from any thread.*/
+    public static boolean anyEntities(Rectangle rect){
         boolResult = false;
 
         Units.getNearby(rect, unit -> {
@@ -78,9 +78,7 @@ public class Units{
         return boolResult;
     }
 
-    /**
-     * Returns whether there are any entities on this tile, with the hitbox expanded.
-     */
+    /**Returns whether there are any entities on this tile, with the hitbox expanded.*/
     public static boolean anyEntities(Tile tile, float expansion, Predicate<Unit> pred){
         Block type = tile.block();
         rect.setSize(type.size * tilesize + expansion, type.size * tilesize + expansion);
@@ -102,16 +100,18 @@ public class Units{
         return value[0];
     }
 
-    /**
-     * Returns the neareset ally tile in a range.
-     */
+    /**Returns the neareset damaged tile.*/
+    public static TileEntity findDamagedTile(Team team, float x, float y){
+        Tile tile = Geometry.findClosest(x, y, world.indexer.getDamaged(team));
+        return tile == null ? null : tile.entity;
+    }
+
+    /**Returns the neareset ally tile in a range.*/
     public static TileEntity findAllyTile(Team team, float x, float y, float range, Predicate<Tile> pred){
         return world.indexer.findTile(team, x, y, range, pred);
     }
 
-    /**
-     * Returns the neareset enemy tile in a range.
-     */
+    /**Returns the neareset enemy tile in a range.*/
     public static TileEntity findEnemyTile(Team team, float x, float y, float range, Predicate<Tile> pred){
         for(Team enemy : state.teams.enemiesOf(team)){
             TileEntity entity = world.indexer.findTile(enemy, x, y, range, pred);
@@ -122,9 +122,7 @@ public class Units{
         return null;
     }
 
-    /**
-     * Iterates over all units on all teams, including players.
-     */
+    /**Iterates over all units on all teams, including players.*/
     public static void allUnits(Consumer<Unit> cons){
         //check all unit groups first
         for(EntityGroup<BaseUnit> group : unitGroups){
@@ -143,7 +141,7 @@ public class Units{
 
     /**Returns the closest target enemy. First, units are checked, then tile entities.*/
     public static TargetTrait getClosestTarget(Team team, float x, float y, float range){
-        return getClosestTarget(team, x, y, range, u -> true);
+        return getClosestTarget(team, x, y, range, u -> !u.isDead() && u.isAdded());
     }
 
     /**Returns the closest target enemy. First, units are checked, then tile entities.*/
@@ -156,9 +154,7 @@ public class Units{
         }
     }
 
-    /**
-     * Returns the closest enemy of this team. Filter by predicate.
-     */
+    /**Returns the closest enemy of this team. Filter by predicate.*/
     public static Unit getClosestEnemy(Team team, float x, float y, float range, Predicate<Unit> predicate){
         result = null;
         cdist = 0f;
@@ -181,9 +177,7 @@ public class Units{
         return result;
     }
 
-    /**
-     * Returns the closest ally of this team. Filter by predicate.
-     */
+    /**Returns the closest ally of this team. Filter by predicate.*/
     public static Unit getClosest(Team team, float x, float y, float range, Predicate<Unit> predicate){
         result = null;
         cdist = 0f;
@@ -206,9 +200,7 @@ public class Units{
         return result;
     }
 
-    /**
-     * Iterates over all units in a rectangle.
-     */
+    /**Iterates over all units in a rectangle.*/
     public static void getNearby(Team team, Rectangle rect, Consumer<Unit> cons){
 
         EntityGroup<BaseUnit> group = unitGroups[team.ordinal()];
@@ -222,9 +214,7 @@ public class Units{
         });
     }
 
-    /**
-     * Iterates over all units in a circle around this position.
-     */
+    /**Iterates over all units in a circle around this position.*/
     public static void getNearby(Team team, float x, float y, float radius, Consumer<Unit> cons){
         rect.setSize(radius * 2).setCenter(x, y);
 
@@ -245,9 +235,7 @@ public class Units{
         });
     }
 
-    /**
-     * Iterates over all units in a rectangle.
-     */
+    /**Iterates over all units in a rectangle.*/
     public static void getNearby(Rectangle rect, Consumer<Unit> cons){
 
         for(Team team : Team.all){
@@ -261,9 +249,7 @@ public class Units{
         EntityQuery.getNearby(playerGroup, rect, player -> cons.accept((Unit) player));
     }
 
-    /**
-     * Iterates over all units that are enemies of this team.
-     */
+    /**Iterates over all units that are enemies of this team.*/
     public static void getNearbyEnemies(Team team, Rectangle rect, Consumer<Unit> cons){
         EnumSet<Team> targets = state.teams.enemiesOf(team);
 
@@ -282,9 +268,7 @@ public class Units{
         });
     }
 
-    /**
-     * Iterates over all units.
-     */
+    /**Iterates over all units.*/
     public static void getAllUnits(Consumer<Unit> cons){
 
         for(Team team : Team.all){
@@ -299,6 +283,5 @@ public class Units{
             cons.accept(unit);
         }
     }
-
 
 }

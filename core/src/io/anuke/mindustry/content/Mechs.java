@@ -14,7 +14,6 @@ import io.anuke.mindustry.game.ContentList;
 import io.anuke.mindustry.graphics.Palette;
 import io.anuke.mindustry.graphics.Shaders;
 import io.anuke.mindustry.maps.TutorialSector;
-import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.type.ContentType;
 import io.anuke.mindustry.type.Mech;
 import io.anuke.ucore.core.Core;
@@ -24,6 +23,7 @@ import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.graphics.Draw;
 import io.anuke.ucore.util.Mathf;
 
+import static io.anuke.mindustry.Vars.net;
 import static io.anuke.mindustry.Vars.unitGroups;
 
 public class Mechs implements ContentList{
@@ -37,7 +37,7 @@ public class Mechs implements ContentList{
 
         alpha = new Mech("alpha-mech", false){
             int maxDrones = 3;
-            float buildTime = 200f;
+            float buildTime = 20f;
 
             {
                 drillPower = 1;
@@ -53,14 +53,19 @@ public class Mechs implements ContentList{
             @Override
             public void updateAlt(Player player){
 
-                if(getDrones(player) < maxDrones && !TutorialSector.supressDrone() && player.timer.get(Player.timerAbility, buildTime)){
-                    if(!Net.client()) {
-                        AlphaDrone drone = (AlphaDrone) UnitTypes.alphaDrone.create(player.getTeam());
-                        drone.leader = player;
-                        drone.set(player.x, player.y);
-                        drone.add();
+                if(player.isShooting && getDrones(player) < maxDrones && !TutorialSector.supressDrone()){
+                    player.timer.get(Player.timerAbility, buildTime);
+
+                    if(player.timer.getTime(Player.timerAbility) > buildTime/2f){
+                        if(!net.client()){
+                            AlphaDrone drone = (AlphaDrone) UnitTypes.alphaDrone.create(player.getTeam());
+                            drone.leader = player;
+                            drone.set(player.x, player.y);
+                            drone.add();
+
+                            Effects.effect(UnitFx.unitLand, player);
+                        }
                     }
-                    Effects.effect(UnitFx.unitLand, player);
                 }
             }
 
@@ -84,7 +89,6 @@ public class Mechs implements ContentList{
                 mass = 0.9f;
                 armor = 30f;
                 weaponOffsetX = -1;
-                itemCapacity = 15;
                 weaponOffsetY = -1;
                 weapon = Weapons.shockgun;
                 trailColorTo = Color.valueOf("d3ddff");
@@ -96,7 +100,7 @@ public class Mechs implements ContentList{
                     Effects.shake(1f, 1f, player);
                     Effects.effect(UnitFx.landShock, player);
                     for(int i = 0; i < 8; i++){
-                        Timers.run(Mathf.random(8f), () -> Lightning.create(player.getTeam(), player.getTeam().color, 17f, player.x, player.y, Mathf.random(360f), 14));
+                        Timers.run(Mathf.random(8f), () -> Lightning.create(player.getTeam(), Palette.lancerLaser, 17f, player.x, player.y, Mathf.random(360f), 14));
                     }
                 }
             }
@@ -119,6 +123,7 @@ public class Mechs implements ContentList{
                 speed = 0.44f;
                 drag = 0.35f;
                 boostSpeed = 0.8f;
+                canHeal = true;
                 weapon = Weapons.healBlaster;
                 armor = 15f;
                 trailColorTo = Palette.heal;
@@ -283,8 +288,8 @@ public class Mechs implements ContentList{
         trident = new Mech("trident-ship", true){
             {
                 drillPower = 2;
-                speed = 0.12f;
-                drag = 0.035f;
+                speed = 0.14f;
+                drag = 0.034f;
                 mass = 2.5f;
                 turnCursor = false;
                 armor = 20f;

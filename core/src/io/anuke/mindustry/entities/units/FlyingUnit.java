@@ -6,14 +6,17 @@ import io.anuke.mindustry.entities.Units;
 import io.anuke.mindustry.entities.traits.CarriableTrait;
 import io.anuke.mindustry.entities.traits.CarryTrait;
 import io.anuke.mindustry.graphics.Trail;
-import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.type.AmmoType;
 import io.anuke.mindustry.world.Tile;
 import io.anuke.mindustry.world.meta.BlockFlag;
 import io.anuke.ucore.core.Timers;
 import io.anuke.ucore.graphics.Draw;
-import io.anuke.ucore.util.*;
+import io.anuke.ucore.util.Angles;
+import io.anuke.ucore.util.Geometry;
+import io.anuke.ucore.util.Mathf;
+import io.anuke.ucore.util.Translator;
 
+import static io.anuke.mindustry.Vars.net;
 import static io.anuke.mindustry.Vars.world;
 
 public abstract class FlyingUnit extends BaseUnit implements CarryTrait{
@@ -76,7 +79,7 @@ public abstract class FlyingUnit extends BaseUnit implements CarryTrait{
                 attack(150f);
 
                 if((Mathf.angNear(angleTo(target), rotation, 15f) || !getWeapon().getAmmo().bullet.keepVelocity) //bombers don't care about rotation
-                && distanceTo(target) < getWeapon().getAmmo().getRange()){
+                && distanceTo(target) < Math.max(getWeapon().getAmmo().getRange(), type.range)){
                     AmmoType ammo = getWeapon().getAmmo();
 
                     Vector2 to = Predict.intercept(FlyingUnit.this, target, ammo.bullet.speed);
@@ -149,7 +152,7 @@ public abstract class FlyingUnit extends BaseUnit implements CarryTrait{
     public void update(){
         super.update();
 
-        if(!Net.client()){
+        if(!net.client()){
             updateRotation();
             wobble();
         }
@@ -198,7 +201,7 @@ public abstract class FlyingUnit extends BaseUnit implements CarryTrait{
     }
 
     protected void wobble(){
-        if(Net.client()) return;
+        if(net.client()) return;
 
         x += Mathf.sin(Timers.time() + id * 999, 25f, 0.08f)*Timers.delta();
         y += Mathf.cos(Timers.time() + id * 999, 25f, 0.08f)*Timers.delta();
