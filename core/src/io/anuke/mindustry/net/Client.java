@@ -138,17 +138,16 @@ public class Client{
 
         for (NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())){
             for (InetAddress address : Collections.list(iface.getInetAddresses())){
-                // Java 1.5 doesn't support getting the subnet mask, so try the two most common.
 
-                byte[] ip = address.getAddress();
+                byte[] ip = address.getAddress(); //255.255.255.255
                 try{
                     socket.send(new DatagramPacket(data, data.length, InetAddress.getByAddress(ip), udpPort));
                 }catch (Exception ignored){}
-                ip[3] = -1; // 255.255.255.0
+                ip[3] = -1; //255.255.255.0
                 try{
                     socket.send(new DatagramPacket(data, data.length, InetAddress.getByAddress(ip), udpPort));
                 }catch (Exception ignored){}
-                ip[2] = -1; // 255.255.0.0
+                ip[2] = -1; //255.255.0.0
                 try{
                     socket.send(new DatagramPacket(data, data.length, InetAddress.getByAddress(ip), udpPort));
                 }catch (Exception ignored){}
