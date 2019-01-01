@@ -198,7 +198,6 @@ public class Control extends Module{
 		});
 	}
 
-	//FIXME figure out what's causing this problem in the first place
 	public void triggerInputUpdate(){
 		Gdx.input = proxy;
 	}

@@ -176,9 +176,9 @@ public class UI extends SceneModule{
 		build.end();
 
 		if(Settings.getBool("showClassicDialog", true)){
-			FloatingDialog dialog = new FloatingDialog("unimportant information");
+			FloatingDialog dialog = new FloatingDialog("Notice");
 			dialog.setFillParent(false);
-			dialog.content().add("Welcome to [accent]Mindustry Classic![]\n\nThis is an ancient version of mindustry, intended to be played as a [accent]demo[]. For the real game, download Mindustry on PC or mobile.")
+			dialog.content().add("You may have noticed that there has not been an update in a long time. This is because the next v4 update is currently in alpha. Join the Google Play beta program or download the alpha on itch.io to play it.")
 			.width(400f).wrap();
 			dialog.content().row();
 			dialog.content().addCheck("Show at startup", true, val -> {
