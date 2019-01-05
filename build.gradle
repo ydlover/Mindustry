@@ -21,7 +21,7 @@ allprojects {
     version = 'release'
 
     ext {
-        versionNumber = 'classic'
+        versionNumber = '3.5'
         versionType = 'release'
         appName = 'Mindustry'
         gdxVersion = '1.9.8'

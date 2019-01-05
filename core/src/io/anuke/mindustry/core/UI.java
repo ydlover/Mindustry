@@ -175,17 +175,18 @@ public class UI extends SceneModule{
 
 		build.end();
 
-		if(Settings.getBool("showClassicDialog", true)){
+		if(Settings.getBool("showBetaDialog", true)){
 			FloatingDialog dialog = new FloatingDialog("Notice");
 			dialog.setFillParent(false);
-			dialog.content().add("You may have noticed that there has not been an update in a long time. This is because the next v4 update is currently in alpha. Join the Google Play beta program or download the alpha on itch.io to play it.")
+			dialog.content().add("[accent]You may have noticed that there has not been an update in a long time.[]\n\n" +
+            "This is because the next (v4) update is currently in alpha.\n\n" +
+            "Join the [accent]Google Play beta program[] on Mindustry's listing if you are interested in playing it before stable release.")
 			.width(400f).wrap();
 			dialog.content().row();
-			dialog.content().addCheck("Show at startup", true, val -> {
-				Settings.putBool("showClassicDialog", val);
-				Settings.save();
-			}).pad(10).growX().get().left();
-			dialog.buttons().addButton("I didn't read any of that but ok", dialog::hide).margin(20).growX();
+			dialog.buttons().addButton("OK", () -> {
+			    Settings.putBool("showBetaDialog", false);
+			    dialog.hide();;
+            }).margin(20).growX();
 
 			dialog.show();
 		}
