@@ -46,7 +46,7 @@ public class Vars{
 	//how far away from spawn points the player can't place blocks
 	public static final float enemyspawnspace = 65;
 	//discord group URL
-	public static final String discordURL = "https://discord.gg/BKADYds";
+	public static final String discordURL = "https://discord.gg/mindustry";
 
 	public static final String releasesURL = "https://api.github.com/repos/Anuken/Mindustry/releases";
 	//directory for user-created map data
