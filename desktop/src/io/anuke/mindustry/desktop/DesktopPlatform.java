@@ -1,21 +1,16 @@
 package io.anuke.mindustry.desktop;
 
-import club.minnced.discord.rpc.DiscordEventHandlers;
-import club.minnced.discord.rpc.DiscordRPC;
-import club.minnced.discord.rpc.DiscordRichPresence;
+import club.minnced.discord.rpc.*;
 import io.anuke.arc.collection.Array;
 import io.anuke.arc.files.FileHandle;
 import io.anuke.arc.function.Consumer;
-import io.anuke.arc.util.Log;
-import io.anuke.arc.util.OS;
-import io.anuke.arc.util.Strings;
+import io.anuke.arc.util.*;
 import io.anuke.arc.util.serialization.Base64Coder;
 import io.anuke.mindustry.core.GameState.State;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.net.CrashSender;
 import io.anuke.mindustry.net.Net;
 import io.anuke.mindustry.ui.dialogs.FileChooser;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.net.NetworkInterface;
 import java.util.Enumeration;
@@ -51,11 +46,6 @@ public class DesktopPlatform extends Platform{
 
         if(e.getMessage() != null && (e.getMessage().contains("Couldn't create window") || e.getMessage().contains("OpenGL 2.0 or higher"))){
 
-            dialog.accept(() -> TinyFileDialogs.tinyfd_messageBox("oh no",
-                    e.getMessage().contains("Couldn't create window") ? "A graphics initialization error has occured! Try to update your graphics drivers.\nReport this to the developer." :
-                            "Your graphics card does not support OpenGL 2.0!\n" +
-                                    "Try to update your graphics drivers.\n\n" +
-                                    "(If that doesn't work, your computer just doesn't support Mindustry.)", "ok", "error", true));
             badGPU = true;
         }
 
@@ -63,7 +53,7 @@ public class DesktopPlatform extends Platform{
 
         CrashSender.send(e, file -> {
             if(!fbgp){
-                dialog.accept(() -> TinyFileDialogs.tinyfd_messageBox("oh no", "A crash has occured. It has been saved in:\n" + file.getAbsolutePath(), "ok", "error", true));
+                //dialog.accept(() -> TinyFileDialogs.tinyfd_messageBox("oh no", "A crash has occured. It has been saved in:\n" + file.getAbsolutePath(), "ok", "error", true));
             }
         });
     }

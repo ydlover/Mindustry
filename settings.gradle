@@ -28,7 +28,7 @@ if(!hasProperty("release")){
         use(':Arc:extensions:recorder', '../Arc/extensions/recorder')
         use(':Arc:extensions:arcnet', '../Arc/extensions/arcnet')
         use(':Arc:backends', '../Arc/backends')
-        use(':Arc:backends:backend-lwjgl3', '../Arc/backends/backend-lwjgl3')
+        use(':Arc:backends:backend-lwjgl2', '../Arc/backends/backend-lwjgl2')
         use(':Arc:backends:backend-android', '../Arc/backends/backend-android')
         use(':Arc:backends:backend-robovm', '../Arc/backends/backend-robovm')
         use(':Arc:backends:backend-headless', '../Arc/backends/backend-headless')

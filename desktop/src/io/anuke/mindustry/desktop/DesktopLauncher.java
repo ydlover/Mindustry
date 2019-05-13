@@ -1,32 +1,27 @@
 package io.anuke.mindustry.desktop;
 
-import io.anuke.arc.ApplicationListener;
-import io.anuke.arc.backends.lwjgl3.Lwjgl3Application;
-import io.anuke.arc.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import io.anuke.arc.Files.FileType;
+import io.anuke.arc.backends.lwjgl2.Lwjgl2Application;
+import io.anuke.arc.backends.lwjgl2.Lwjgl2ApplicationConfiguration;
 import io.anuke.mindustry.Mindustry;
 import io.anuke.mindustry.core.Platform;
 import io.anuke.mindustry.net.*;
 
-public class DesktopLauncher extends Lwjgl3Application{
-
-    public DesktopLauncher(ApplicationListener listener, Lwjgl3ApplicationConfiguration config){
-        super(listener, config);
-    }
+public class DesktopLauncher{
 
     public static void main(String[] arg){
         try{
-            Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-            config.setTitle("Mindustry");
-            config.setMaximized(true);
-            config.setBackBufferConfig(8, 8, 8, 8, 0, 0, 0);
-            config.setWindowedMode(960, 540);
-            config.setWindowIcon("sprites/icon.png");
+            Lwjgl2ApplicationConfiguration config = new Lwjgl2ApplicationConfiguration();
+            config.title = "Mindustry";
+            config.width = 960;
+            config.height = 540;
+            config.addIcon("sprites/icon.png", FileType.Internal);
 
             Platform.instance = new DesktopPlatform(arg);
 
             Net.setClientProvider(new ArcNetClient());
             Net.setServerProvider(new ArcNetServer());
-            new DesktopLauncher(new Mindustry(), config);
+            new Lwjgl2Application(new Mindustry(), config);
         }catch(Throwable e){
             DesktopPlatform.handleCrash(e);
         }

@@ -2,7 +2,6 @@ package io.anuke.mindustry.core;
 
 import io.anuke.arc.*;
 import io.anuke.arc.graphics.Color;
-import io.anuke.arc.graphics.GL20;
 import io.anuke.arc.graphics.g2d.Draw;
 import io.anuke.arc.graphics.g2d.TextureAtlas;
 import io.anuke.arc.input.KeyCode;
@@ -23,7 +22,6 @@ import io.anuke.mindustry.ui.dialogs.FloatingDialog;
 import io.anuke.mindustry.world.Tile;
 
 import java.io.IOException;
-import java.nio.IntBuffer;
 
 import static io.anuke.arc.Core.scene;
 import static io.anuke.mindustry.Vars.*;
@@ -43,9 +41,7 @@ public class Control implements ApplicationListener{
     private InputHandler input;
 
     public Control(){
-        IntBuffer buf = BufferUtils.newIntBuffer(1);
-        Core.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, buf);
-        int maxSize = buf.get(0);
+        int maxSize = 2048;
 
         saves = new Saves();
         data = new GlobalData();
